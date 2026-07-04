@@ -366,6 +366,179 @@ class PersonalInfoExtractor:
                     break
         
         return profile
+    
+    def extract_from_resume_pdf(self, resume_path: str, llm_client: Any, output_to_template: bool = True) -> dict:
+        """
+        Extract information directly from a resume PDF file and optionally update profile_template.md.
+        
+        Args:
+            resume_path: Path to the resume PDF file
+            llm_client: LLM client instance for AI extraction
+            output_to_template: Whether to automatically update profile_template.md
+        
+        Returns:
+            Extracted profile dictionary
+        """
+        from pathlib import Path
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            print("❌ Error: pypdf not installed. Please run: pip install pypdf")
+            return {}
+        
+        resume_file = Path(resume_path)
+        if not resume_file.exists():
+            print(f"❌ Error: Resume file not found: {resume_path}")
+            return {}
+        
+        print(f"📖 Reading PDF: {resume_path}")
+        
+        # Extract text from PDF
+        try:
+            reader = PdfReader(str(resume_file))
+            pdf_text = ""
+            for page in reader.pages:
+                pdf_text += page.extract_text() + "\n"
+        except Exception as e:
+            print(f"❌ Error reading PDF: {e}")
+            return {}
+        
+        if not pdf_text.strip():
+            print("❌ Error: Could not extract text from PDF")
+            return {}
+        
+        print(f"✅ Extracted {len(pdf_text)} characters from resume")
+        
+        # Use LLM to extract structured information
+        print("🤖 Using AI to analyze and extract information...")
+        
+        extraction_prompt = f"""
+你是一个专业的简历解析AI。请从以下简历内容中提取所有个人信息，返回结构化的JSON格式。
+
+## 简历内容
+
+{pdf_text[:5000]}  {('... (内容过长，已截取前5000字)' if len(pdf_text) > 5000 else '')}
+
+## 提取要求
+
+请提取以下信息（如果简历中没有某项内容，请留空）：
+
+1. **个人基本信息**
+   - 姓名 (中文)
+   - 姓名 (英文/拼音)
+   - 性别
+   - 出生日期
+   - 邮箱
+   - 手机号
+   - 微信号
+   - 现居住地
+   - 期望工作城市
+
+2. **教育背景**
+   - 学校名称
+   - 学位
+   - 专业
+   - 入学时间
+   - 毕业时间
+   - GPA
+
+3. **工作经历**
+   - 每份工作的公司、职位、时间、主要职责、成就
+
+4. **项目经验**
+   - 项目名称、角色、技术栈、成就
+
+5. **技能**
+   - 编程语言、框架、工具等
+
+6. **其他**
+   - 获奖、证书、论文等
+
+## 响应格式
+
+请以Markdown列表格式返回，每行一个字段，格式如下：
+
+- **字段名称**: 字段值
+
+例如：
+- **中文姓名**: 张三
+- **邮箱**: zhangsan@example.com
+- **手机号**: 13912345678
+"""
+        
+        try:
+            import asyncio
+            # If llm_client is async
+            if hasattr(llm_client, 'acompute_text'):
+                extracted_text = asyncio.run(llm_client.acompute_text(extraction_prompt))
+            elif hasattr(llm_client, 'compute_text'):
+                extracted_text = llm_client.compute_text(extraction_prompt)
+            else:
+                print("❌ Error: LLM client does not have compute_text method")
+                extracted_text = ""
+        except Exception as e:
+            print(f"❌ Error calling LLM: {e}")
+            extracted_text = ""
+        
+        if not extracted_text:
+            print("❌ Error: Failed to extract information using AI")
+            return {}
+        
+        print("✅ Successfully extracted information from resume")
+        
+        # Update profile_template.md with extracted information
+        if output_to_template:
+            self._update_profile_template(extracted_text)
+        
+        return {"extracted_text": extracted_text}
+    
+    def _update_profile_template(self, extracted_content: str) -> None:
+        """
+        Update or create profile_template.md with extracted information.
+        
+        Args:
+            extracted_content: Extracted information in markdown format
+        """
+        template_content = f"""# 个人信息档案模板 (Personal Information Profile)
+
+## 说明 (Instructions)
+
+本文档包含从你的简历中自动提取的个人信息。请根据具体岗位需求进行补充和修改。
+
+This document contains personal information automatically extracted from your resume. 
+Please supplement and modify according to specific job requirements.
+
+---
+
+## 自动提取信息 (Auto-extracted Information)
+
+{extracted_content}
+
+---
+
+## 补充信息 (Supplementary Information)
+
+请在以下部分添加简历中没有的、但对岗位申请重要的信息：
+
+### 针对某类岗位的补充说明
+- 
+
+### 特殊技能或经历
+- 
+
+### 其他相关信息
+- 
+
+---
+
+**最后更新**: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+        
+        try:
+            self.profile_template_path.write_text(template_content, encoding="utf-8")
+            print(f"✅ Updated profile template: {self.profile_template_path}")
+        except Exception as e:
+            print(f"❌ Error writing profile template: {e}")
 
 
 # Usage example

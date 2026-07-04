@@ -112,7 +112,7 @@ class ResumeSkill:
             print("✅ 已保存个人信息，稍后可使用 apply 命令进行应聘")
 
 
-async def main():
+async async def main():
     parser = argparse.ArgumentParser(
         description="RESUME_SKILL - 智能简历投递助手",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -132,15 +132,20 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
     
     # Extract command
-    extract_parser = subparsers.add_parser("extract", help="Extract personal information")
+    extract_parser = subparsers.add_parser("extract", help="Extract personal information from resume PDF")
+    extract_parser.add_argument(
+        "--resume",
+        help="Path to resume PDF file (e.g., personal_info/resume/my_resume.pdf)"
+    )
     extract_parser.add_argument(
         "--personal-info-dir",
         default="personal_info",
         help="Path to personal_info directory (default: personal_info)"
     )
     extract_parser.add_argument(
-        "--llm-api-key",
-        help="LLM API key (for AI extraction)"
+        "--use-ai",
+        action="store_true",
+        help="Use AI to extract and analyze resume information"
     )
     
     # Apply command
@@ -188,19 +193,78 @@ Examples:
         print("🚀 RESUME_SKILL - 智能简历投递助手")
         print("=" * 60)
         
-        # Initialize LLM client if API key provided
-        llm_client = None
-        if args.llm_api_key:
+        resume_path = args.resume
+        
+        # If resume path provided, extract from it
+        if resume_path:
+            resume_file = Path(resume_path)
+            if not resume_file.exists():
+                print(f"❌ Error: Resume file not found: {resume_path}")
+                return 1
+            
+            print(f"📄 开始从简历提取信息: {resume_path}")
+            print("   Extracting information from resume...")
+            
+            # Extract with AI
             try:
                 from apply_agent.llm_client import LLMClient
-                llm_client = LLMClient(api_key=args.llm_api_key)
-                print("✅ LLM客户端已初始化")
+                from dotenv import load_dotenv
+                import os
+                
+                # Load environment variables
+                load_dotenv()
+                
+                # Initialize LLM client
+                api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    print("❌ Error: No API key found in .env")
+                    print("   Please configure DEEPSEEK_API_KEY or OPENAI_API_KEY")
+                    return 1
+                
+                llm_client = LLMClient(api_key=api_key)
+                
+                # Perform extraction (non-async)
+                result = skill.extractor.extract_from_resume_pdf(
+                    resume_path=resume_path,
+                    llm_client=llm_client,
+                    output_to_template=True  # Automatically update profile_template.md
+                )
+                
+                print("✅ 简历信息提取完成!")
+                print(f"   Profile template updated: {skill.personal_info_dir / 'profile_template.md'}")
+                return 0
+                
             except Exception as e:
-                print(f"⚠️ Warning: Cannot initialize LLM client: {e}")
-                print("   将使用模板模式提取信息")
-        
-        await skill.extract_personal_info(llm_client)
-        return 0
+                print(f"❌ Error: {e}")
+                import traceback
+                traceback.print_exc()
+                return 1
+        else:
+            # Standard extraction without specific resume
+            print("⚠️ No --resume specified, running standard extraction...")
+            
+            try:
+                from dotenv import load_dotenv
+                import os
+                
+                load_dotenv()
+                
+                llm_client = None
+                if args.use_ai:
+                    try:
+                        from apply_agent.llm_client import LLMClient
+                        api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
+                        if api_key:
+                            llm_client = LLMClient(api_key=api_key)
+                            print("✅ LLM客户端已初始化")
+                    except Exception as e:
+                        print(f"⚠️ Warning: Cannot initialize LLM client: {e}")
+                
+                await skill.extract_personal_info(llm_client)
+                return 0
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                return 1
     
     elif args.command == "apply":
         print("🚀 RESUME_SKILL - 智能简历投递助手")
