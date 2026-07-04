@@ -112,7 +112,7 @@ class ResumeSkill:
             print("✅ 已保存个人信息，稍后可使用 apply 命令进行应聘")
 
 
-async async def main():
+async def main():
     parser = argparse.ArgumentParser(
         description="RESUME_SKILL - 智能简历投递助手",
         formatter_class=argparse.RawDescriptionHelpFormatter,
