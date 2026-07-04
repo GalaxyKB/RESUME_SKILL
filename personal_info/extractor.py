@@ -469,12 +469,14 @@ class PersonalInfoExtractor:
         try:
             import asyncio
             # If llm_client is async
-            if hasattr(llm_client, 'acompute_text'):
-                extracted_text = asyncio.run(llm_client.acompute_text(extraction_prompt))
+            if hasattr(llm_client, 'acall_text'):
+                extracted_text = asyncio.run(llm_client.acall_text("", extraction_prompt))
+            elif hasattr(llm_client, 'call_text'):
+                extracted_text = llm_client.call_text("", extraction_prompt)
             elif hasattr(llm_client, 'compute_text'):
                 extracted_text = llm_client.compute_text(extraction_prompt)
             else:
-                print("❌ Error: LLM client does not have compute_text method")
+                print("❌ Error: LLM client does not have call_text or compute_text method")
                 extracted_text = ""
         except Exception as e:
             print(f"❌ Error calling LLM: {e}")

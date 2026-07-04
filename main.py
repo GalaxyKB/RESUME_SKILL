@@ -214,14 +214,12 @@ Examples:
                 # Load environment variables
                 load_dotenv()
                 
-                # Initialize LLM client
-                api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
-                if not api_key:
+                # Initialize LLM client (reads from CONFIG which loads from .env)
+                llm_client = LLMClient()
+                if not llm_client.api_key:
                     print("❌ Error: No API key found in .env")
                     print("   Please configure DEEPSEEK_API_KEY or OPENAI_API_KEY")
                     return 1
-                
-                llm_client = LLMClient(api_key=api_key)
                 
                 # Perform extraction (non-async)
                 result = skill.extractor.extract_from_resume_pdf(
