@@ -1,0 +1,211 @@
+# ==========================================
+# RESUME_SKILL 配置文件
+# Configuration file for RESUME_SKILL
+#
+# 注意: 大部分配置都已有合理默认值
+# 建议: 仅在需要时修改
+# ==========================================
+
+# ==========================================
+# ⚠️ API 配置 (必需 - MUST CONFIGURE)
+# ==========================================
+# 重要: API密钥应该存储在 .env 文件中，而不是这里
+# 获取步骤见: https://github.com/xxx/RESUME_SKILL#api配置
+
+api:
+  # LLM提供商: deepseek (推荐) 或 openai
+  provider: deepseek
+  
+  # API密钥来源
+  # 方案1: 从环境变量读取（推荐，最安全）
+  # 方案2: 直接填写到 .env 文件
+  # 切勿在此处填写真实密钥！
+  
+  # 支持的提供商配置：
+  # DeepSeek: https://www.deepseek.com
+  # OpenAI: https://platform.openai.com
+
+# ==========================================
+# 个人信息配置 (Personal Information)
+# ==========================================
+personal_info:
+  # 模板文件位置
+  template_file: ./personal_info/profile_template.md
+  
+  # 生成的统一资料文件
+  output_file: ./personal_info/unified_profile.yaml
+  
+  # 最大文件大小
+  max_file_size: 10MB
+  
+  # 支持的导入格式
+  supported_formats:
+    - md          # Markdown
+    - txt         # 纯文本
+    - pdf         # PDF (需要pdf2image等库)
+    - json        # JSON格式
+    - yaml        # YAML格式
+
+# ==========================================
+# 表单填写配置 (Form Filling)
+# ==========================================
+form_filling:
+  # 是否启用自动填写模式
+  auto_fill: true
+  
+  # 填写前是否要求用户确认
+  require_confirmation_before_fill: true
+  
+  # 表单字段提取失败时的重试次数
+  max_extraction_retries: 8
+  
+  # 字段提取重试之间的等待时间（毫秒）
+  extraction_retry_delay: 1200
+  
+  # 表单填写操作超时（毫秒）
+  fill_operation_timeout: 30000
+  
+  # 两个字段之间的延迟（毫秒，防止被检测为机器人）
+  inter_field_delay: 100
+  
+  # 是否自动提交表单
+  auto_submit: false
+  
+  # 提交前等待时间（毫秒）
+  submit_wait_time: 2000
+  
+  # 最大填写轮次（处理多页表单）
+  max_fill_rounds: 5
+
+# ==========================================
+# 浏览器配置 (Browser)
+# ==========================================
+browser:
+  # 是否使用无头模式（推荐: false，便于调试）
+  headless: false
+  
+  # 慢动作模式延迟（毫秒）
+  # 用于观察操作过程，调试时设置 300-500
+  slow_motion: 300
+  
+  # 浏览器启动超时（毫秒）
+  launch_timeout: 30000
+  
+  # 页面操作超时（毫秒）
+  navigation_timeout: 60000
+  
+  # 抗爬虫启动参数
+  # 这些参数用于隐藏 webdriver 和自动化标记
+  launch_args:
+    - --disable-blink-features=AutomationControlled
+    - --disable-dev-shm-usage
+    - --no-first-run
+    - --no-default-browser-check
+    - --disable-popup-blocking
+    - --disable-extensions
+    - --start-maximized
+  
+  # 视口设置
+  viewport:
+    width: 1920
+    height: 1080
+  
+  # 浏览器语言和时区
+  locale: zh-CN
+  timezone_id: Asia/Shanghai
+
+# ==========================================
+# 会话和存储 (Session & Storage)
+# ==========================================
+session:
+  # 浏览器会话保存目录
+  profile_dir: ./.session/chrome
+  
+  # 是否保存会话信息
+  persist_session: true
+  
+  # 会话过期时间（天）
+  session_expiry_days: 30
+
+# ==========================================
+# 输出和日志 (Logging & Output)
+# ==========================================
+logging:
+  # 日志级别: DEBUG | INFO | WARNING | ERROR
+  level: INFO
+  
+  # 日志文件位置
+  log_file: ./outputs/logs/resume_skill.log
+  
+  # 是否输出到控制台
+  console_output: true
+  
+  # 日志格式
+  format: "[%(levelname)s] %(asctime)s - %(message)s"
+
+# ==========================================
+# 数据保存配置 (Data Storage)
+# ==========================================
+storage:
+  # JD分析结果保存目录
+  jd_analysis_dir: ./outputs/jd_analysis
+  
+  # 填充计划保存目录
+  fill_plan_dir: ./outputs/fill_plans
+  
+  # 定制化文本保存目录
+  tailored_texts_dir: ./outputs/tailored_texts
+  
+  # 截图保存目录
+  screenshots_dir: ./outputs/screenshots
+  
+  # 应用记录CSV文件
+  records_file: ./records/applications.csv
+  
+  # LLM调用日志
+  llm_calls_log: ./outputs/logs/llm_calls.jsonl
+
+# ==========================================
+# 功能开关 (Feature Flags)
+# ==========================================
+features:
+  # 是否启用JD分析
+  enable_jd_analysis: true
+  
+  # 是否启用自动匹配
+  enable_auto_matching: true
+  
+  # 是否启用定制化内容
+  enable_tailored_content: true
+  
+  # 是否启用应用记录
+  enable_application_tracking: true
+  
+  # 是否保存操作截图
+  enable_screenshots: true
+  
+  # 是否启用Web搜索（DeepSeek特有）
+  enable_web_search: false
+
+# ==========================================
+# 高级配置 (Advanced Settings)
+# ==========================================
+advanced:
+  # 是否启用调试模式
+  debug_mode: false
+  
+  # 是否启用缓存
+  enable_cache: true
+  
+  # 缓存过期时间（小时）
+  cache_expiry_hours: 24
+  
+  # 是否启用代理
+  enable_proxy: false
+  
+  # 代理URL (如需要则填写)
+  proxy_url: null
+  
+  # 是否启用性能分析
+  enable_profiling: false
+
