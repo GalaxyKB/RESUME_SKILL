@@ -11,175 +11,241 @@
 
 - 🤖 **AI智能匹配** - 自动分析职位要求，匹配个人信息
 - 📋 **自动表单填充** - 识别表单字段，智能填充内容
-- 🔍 **信息智能提取** - AI从多源提取和整合个人信息
-- 📊 **投递追踪** - 自动记录投递历史和匹配度评分
+- 🔍 **简历信息提取** - AI自动从PDF简历中提取和分析个人信息
+- 📝 **灵活信息管理** - 支持手动编辑补充，应对简历未涵盖的内容
 - 🛡️ **反爬虫保护** - 模拟真实用户行为，规避检测
 - 🌐 **多平台支持** - 网易、BOSS、拉勾、智联等主流平台
 
 ---
 
-## 🎯 快速开始
+## 🎯 完整使用流程
 
-### 1️⃣ 环境准备
+### 📋 第一阶段：初始设置
+
+#### 1️⃣ 环境准备
 
 ```bash
+# 克隆项目
 git clone https://github.com/GalaxyKB/RESUME_SKILL.git
 cd RESUME_SKILL
 
+# 创建虚拟环境
 python -m venv venv
+
+# 激活虚拟环境
 # Windows:
 venv\Scripts\activate
 # macOS/Linux:
 source venv/bin/activate
 
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-### 2️⃣ 配置API密钥
+#### 2️⃣ 配置API密钥
 
 ```bash
+# 复制配置模板
 cp .env.example .env
-# 编辑 .env 文件，填入你的API密钥
+
+# 用编辑器打开 .env，填入你的API密钥
+# 推荐使用 DeepSeek（更便宜）
+# 备选使用 OpenAI
 ```
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| DeepSeek | https://www.deepseek.com | 推荐 (便宜) |
-| OpenAI | https://platform.openai.com | 备选 |
-
-### 3️⃣ 填写个人信息
-
-编辑 `personal_info/profile_template.md`
-
-### 4️⃣ 开始投递
-
-```bash
-python main.py extract --personal-info-dir personal_info
-python main.py apply --url "https://job-site.com/job" --auto-fill
-```
+| 服务 | 推荐度 | 说明 |
+|------|--------|------|
+| DeepSeek | ⭐⭐⭐⭐⭐ | 推荐，成本低 |
+| OpenAI | ⭐⭐⭐ | 备选，质量稳定 |
 
 ---
 
-## 📖 文档
+### 📄 第二阶段：准备个人信息
 
-- **[QUICKSTART.md](QUICKSTART.md)** - 快速开始
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - 项目架构
-- **[config.yaml](config.yaml)** - 配置详解
+#### 3️⃣ 上传正式简历PDF
 
----
-
-## 🛠️ 主要命令
-
-### 提取信息
-```bash
-python main.py extract --personal-info-dir personal_info
-```
-
-### 投递简历
-```bash
-python main.py apply --url "URL" --auto-fill --manual-login-first
-```
-
-**常用参数：**
-- `--url` - 职位页面URL
-- `--auto-fill` - 自动填充
-- `--continue-after-analysis` - 分析后继续
-- `--manual-login-first` - 手动登录后填充
-- `--browser-channel chrome` - 使用Chrome
-
----
-
-## ⚙️ 配置
-
-### `.env` 文件
-```env
-# API配置
-DEEPSEEK_API_KEY=your_key
-OPENAI_API_KEY=your_key
-
-# 浏览器
-BROWSER_CHANNEL=chrome
-DEBUG_MODE=false
-```
-
-### `config.yaml` 文件
-- API选择
-- 浏览器设置
-- 文件路径
-- 表单策略
-
----
-
-## 📁 项目结构
+**将你的正式简历PDF文件放入：** `personal_info/resume/` 文件夹
 
 ```
 RESUME_SKILL/
-├── main.py                      # 入口程序
-├── config.yaml                  # 配置文件
-├── requirements.txt             # 依赖
-├── .env.example                 # API示例
+└── personal_info/
+    └── resume/
+        └── 你的简历.pdf  ← 放在这里
+```
+
+#### 4️⃣ 提取简历信息（可选 - 自动进行）
+
+系统会自动从PDF简历中提取以下信息：
+- 基本个人信息（姓名、电话、邮箱等）
+- 工作经历和项目经验
+- 教育背景和技能
+- 其他核心内容
+
+#### 5️⃣ 编辑个人信息模板
+
+**编辑文件：** `personal_info/profile_template.md`
+
+这个文件包含从简历中提取的所有信息。你可以：
+- ✏️ 编辑已有内容
+- ➕ 补充简历中没有的内容
+- 🗑️ 删除不需要的部分
+- ⚙️ 调整格式和内容
+
+这个文件会作为后续网申表单填充的数据源。
+
+---
+
+### 🌐 第三阶段：自动填充网申表单
+
+#### 6️⃣ 启动应用并拉起网页
+
+```bash
+# 启动应用（带浏览器自动打开）
+python main.py apply --url "网申表单URL" --manual-login-first
+
+# 示例：
+python main.py apply --url "https://hr.163.com/user.html/resume/modify?type=add" --manual-login-first
+```
+
+**命令参数说明：**
+- `--url` - 网申表单页面的完整网址（从浏览器地址栏复制）
+- `--manual-login-first` - 首先由用户手动登录
+
+#### 7️⃣ 手动登录和导航
+
+1. 浏览器会自动打开并访问你提供的网址
+2. **手动完成登录** 登录到招聘网站
+3. 登录后，**导航到个人资料填写界面**
+
+**重要：** 等待系统准备完毕，然后执行第8步
+
+#### 8️⃣ 执行自动填充
+
+所有准备就绪后，在个人资料填写界面上，执行填充命令：
+
+```bash
+# 自动识别表单并填充信息
+python main.py fill
+
+# 或者带完整参数：
+python main.py fill --continue-after-analysis --auto-fill
+```
+
+**命令参数说明：**
+- `--continue-after-analysis` - 分析完成后继续自动填充
+- `--auto-fill` - 自动填充所有识别到的字段
+
+系统会：
+1. 🔍 识别页面上的所有表单字段
+2. 📊 分析字段类型和要求
+3. 💾 从 `personal_info/profile_template.md` 中匹配信息
+4. ✍️ 自动填充到对应的表单字段
+5. 📝 生成填充日志供你查看
+
+---
+
+## 📂 项目结构
+
+```
+RESUME_SKILL/
+├── apply_agent/                    # 核心引擎（13个模块）
+│   ├── workflow.py                 # 主流程控制
+│   ├── browser_agent.py            # 浏览器自动化
+│   ├── form_extractor.py           # 表单识别
+│   ├── form_filler.py              # 表单填充
+│   ├── llm_client.py               # AI接口
+│   ├── jd_analyzer.py              # 职位分析
+│   └── ...其他模块
 │
-├── apply_agent/                 # 核心模块
-│   ├── workflow.py
-│   ├── browser_agent.py
-│   ├── form_extractor.py
-│   ├── form_filler.py
-│   ├── llm_client.py
-│   └── ...
+├── personal_info/                  # 🔒 个人信息（隐私保护）
+│   ├── resume/                     # 📄 你的正式简历PDF
+│   │   └── 你的简历.pdf
+│   └── profile_template.md         # ✏️ 个人信息模板（用户编辑）
 │
-├── personal_info/               # 个人信息
-│   └── profile_template.md
-│
-└── docs/                        # 文档
-    ├── QUICKSTART.md
-    └── ARCHITECTURE.md
+├── main.py                         # 应用入口
+├── config.yaml                     # 配置文件（详细注释）
+├── .env.example                    # API配置模板
+├── requirements.txt                # Python依赖
+├── README.md                       # 本文件
+├── QUICKSTART.md                   # 快速开始（更多细节）
+├── ARCHITECTURE.md                 # 系统架构（技术文档）
+└── LICENSE                         # MIT开源许可
 ```
 
 ---
 
-## ❓ 常见问题
+## 💡 常见问题
 
-**Q: 如何获取API密钥？**
-- DeepSeek: https://www.deepseek.com (注册 → 充值 → API Key)
-- OpenAI: https://platform.openai.com (注册 → 支付 → API Key)
+### Q: 为什么需要上传正式简历PDF？
+A: 系统需要从PDF中提取你的核心信息（工作经历、技能等），作为网申表单填充的基础。
 
-**Q: 支持哪些平台？**
-网易、BOSS直聘、拉勾、智联、前程无忧等
+### Q: profile_template.md 可以修改吗？
+A: **完全可以！** 这个文件是为了补充简历中没有的内容。你可以根据具体岗位需求进行编辑。
 
-**Q: 安全吗？**
-是的，反爬虫保护完善，模拟真实用户
+### Q: 能支持中英文简历吗？
+A: 支持中文简历。建议使用中文简历以获得最佳识别效果。
 
-**Q: 个人信息会泄露吗？**
-不会，所有敏感文件通过 `.gitignore` 保护
+### Q: 表单填充失败了怎么办？
+A: 检查：
+1. 是否登录成功
+2. 是否在正确的表单页面
+3. profile_template.md 中的信息是否完整
+4. API密钥配置是否正确
+
+### Q: 系统会保存我的个人信息吗？
+A: 所有个人信息只存储在本地 `personal_info/` 文件夹中。Git仓库通过 `.gitignore` 保护这些文件，不会上传到GitHub。
+
+### Q: 多个岗位投递时怎么办？
+A: 可以为不同岗位创建不同版本的 `profile_template.md`，但系统会使用同一个文件。如需针对不同岗位优化，建议：
+1. 修改 `profile_template.md` 中的岗位相关内容
+2. 执行填充命令
+3. 或使用不同的分支/备份
 
 ---
 
 ## 🔒 隐私与安全
 
-- ✅ 本地存储，不上传云端
-- ✅ API密钥在 `.env` （不提交到Git）
-- ✅ 会话本地缓存
-- ✅ 投递记录保存在本地
+- ✅ 所有个人信息存储在本地
+- ✅ API密钥存储在 `.env` 文件（不提交到Git）
+- ✅ 浏览器会话和登录信息不上传
+- ✅ GitHub仓库不包含任何个人数据
+- ✅ MIT开源许可
+
+---
+
+## 🚀 快速命令参考
+
+```bash
+# 启动应用（拉起浏览器，手动登录）
+python main.py apply --url "URL" --manual-login-first
+
+# 执行表单填充
+python main.py fill --continue-after-analysis --auto-fill
+
+# 查看帮助
+python main.py --help
+```
+
+---
+
+## 📚 更多文档
+
+- [快速开始指南](QUICKSTART.md) - 更详细的步骤说明
+- [系统架构](ARCHITECTURE.md) - 技术细节和模块说明
+- [配置文件](config.yaml) - 所有配置选项详解
 
 ---
 
 ## 📝 许可证
 
-MIT License - 详见 [LICENSE](LICENSE)
+MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ---
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交Issue和Pull Request！
 
 ---
 
-## 💬 反馈
-
-- [提交Issue](https://github.com/GalaxyKB/RESUME_SKILL/issues)
-- [讨论建议](https://github.com/GalaxyKB/RESUME_SKILL/discussions)
-
----
-
-**Made with ❤️ by GalaxyKB**
+**准备好了？** 按照上面的 [完整使用流程](#-完整使用流程) 开始吧！🎉

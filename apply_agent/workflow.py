@@ -110,30 +110,59 @@ def _print_local_context(profile: dict[str, Any], preferences: dict[str, Any], r
 
 
 def _ensure_resume_pdf() -> str:
-    """Find resume PDF with priority: named_files -> resume.pdf -> any pdf"""
-    # Priority 1: Check if there's a specific named resume
+    """Find resume PDF with priority:
+    1. personal_info/formal_resume/ (user's formal resume)
+    2. data/resume.pdf (default location)
+    3. project root resume.pdf
+    4. any PDF in project root
+    """
+    # Priority 1: Check personal_info/formal_resume/ folder
+    formal_resume_dir = PROJECT_ROOT / "personal_info" / "formal_resume"
+    if formal_resume_dir.exists():
+        pdf_files_in_formal = sorted(formal_resume_dir.glob("*.pdf"))
+        if pdf_files_in_formal:
+            # Prefer Chinese-named PDFs (likely user-named resume)
+            chinese_pdfs = [p for p in pdf_files_in_formal if any(ord(c) > 0x4E00 for c in p.stem)]
+            if chinese_pdfs:
+                selected = max(chinese_pdfs, key=lambda p: len(p.stem))
+                print(f"✅ Found resume in personal_info/formal_resume/: {selected.name}")
+                return str(selected)
+            # Otherwise use first PDF found
+            selected = pdf_files_in_formal[0]
+            print(f"✅ Found resume in personal_info/formal_resume/: {selected.name}")
+            return str(selected)
+    
+    # Priority 2: Check standard locations
     candidates = [
         PROJECT_ROOT / "data" / "resume.pdf",
         PROJECT_ROOT / "resume.pdf",
     ]
     for candidate in candidates:
         if candidate.exists():
+            print(f"✅ Found resume at: {candidate}")
             return str(candidate)
     
-    # Priority 2: Look for PDF with user's name or resume keywords
+    # Priority 3: Look for any PDF in project root
     pdf_files = sorted(PROJECT_ROOT.glob("*.pdf"))
-    
-    # Prefer PDFs with Chinese names (likely user-named resume)
-    chinese_pdfs = [p for p in pdf_files if any(ord(c) > 0x4E00 for c in p.stem)]
-    if chinese_pdfs:
-        # Among Chinese-named PDFs, prefer ones with more chars (更具体的文件名)
-        return str(max(chinese_pdfs, key=lambda p: len(p.stem)))
-    
-    # Fallback to any PDF
     if pdf_files:
-        return str(pdf_files[0])
+        # Prefer PDFs with Chinese names (likely user-named resume)
+        chinese_pdfs = [p for p in pdf_files if any(ord(c) > 0x4E00 for c in p.stem)]
+        if chinese_pdfs:
+            selected = max(chinese_pdfs, key=lambda p: len(p.stem))
+            print(f"✅ Found resume in project root: {selected.name}")
+            return str(selected)
+        # Otherwise use first PDF found
+        selected = pdf_files[0]
+        print(f"✅ Found resume in project root: {selected.name}")
+        return str(selected)
     
-    return str(PROJECT_ROOT / "data" / "resume.pdf")
+    # Fallback: return default path (will likely fail, but indicates user needs to add resume)
+    default_path = PROJECT_ROOT / "data" / "resume.pdf"
+    print(f"⚠️ Warning: No resume PDF found. Expected one of:")
+    print(f"   - {formal_resume_dir}/*.pdf (recommended)")
+    print(f"   - {PROJECT_ROOT / 'resume.pdf'}")
+    print(f"   - {PROJECT_ROOT / 'data' / 'resume.pdf'}")
+    return str(default_path)
 
 
 def _write_text(path: Path, text: str) -> None:

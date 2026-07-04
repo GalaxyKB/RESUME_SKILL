@@ -17,10 +17,8 @@
 
 # 个人数据和简历
 personal_info/unified_profile.yaml
-personal_info/general_information/*
-!personal_info/general_information/.gitkeep
-personal_info/formal_resume/*
-!personal_info/formal_resume/.gitkeep
+personal_info/resume/*
+!personal_info/resume/.gitkeep
 personal_info/*.pdf
 
 # 输出和记录
