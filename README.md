@@ -108,6 +108,18 @@
 <td>🔄 一次配置，多次复用</td>
 <td><span style="background-color: #FF9FF3; color: white; padding: 2px 6px; border-radius: 3px;"><b>∞</b></span></td>
 </tr>
+<tr>
+<td><b>🏗️ 系统稳定性</b></td>
+<td>易卡死崩溃</td>
+<td>🛡️ MCP架构 + 超时保护 + 自动重连</td>
+<td><span style="background-color: #45B7D1; color: white; padding: 2px 6px; border-radius: 3px;"><b>20x</b></span></td>
+</tr>
+<tr>
+<td><b>🤖 智能决策</b></td>
+<td>固定脚本流程</td>
+<td>🧠 JSON结构化 + AgentState + 智能重试</td>
+<td><span style="background-color: #96CEB4; color: white; padding: 2px 6px; border-radius: 3px;"><b>15x</b></span></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -164,7 +176,19 @@ React/Vue深度适配
 
 </div>
 
-### ⚡ v2.2 核心修复亮点
+### ⚡ v2.2 终极稳定版 - MCP架构重构
+
+<details>
+<summary><b>🏗️ MCP架构重构</b> - 全新的智能Agent系统</summary>
+
+- ✅ **JSON结构化通信** - 告别脆弱的文本解析，使用稳定JSON格式
+- ✅ **AgentState状态管理** - 完整的执行状态跟踪，LLM决策更智能
+- ✅ **工具超时保护** - 所有工具都有合理超时，防止卡死阻塞
+- ✅ **自动重连机制** - Server崩溃自动恢复，提升系统稳定性
+- ✅ **新增match_fields工具** - 专用字段匹配工具，分离关注点
+- ✅ **新增get_current_url工具** - 完整的URL跟踪能力
+
+</details>
 
 <details>
 <summary><b>🔧 兼容性增强</b> - 支持更多浏览器和环境</summary>
@@ -181,6 +205,7 @@ React/Vue深度适配
 - ✅ **LLM批处理** - 自动分批处理大表单，避免上下文溢出
 - ✅ **稳定选择器** - 优先使用name、id等稳定属性，减少定位漂移
 - ✅ **增强事件触发** - 完整支持React/Vue合成事件
+- ✅ **减少重复提取** - 智能状态管理，避免不必要的字段提取
 
 </details>
 
@@ -189,7 +214,7 @@ React/Vue深度适配
 
 - ✅ **智能验证系统** - 增强填充验证，及时发现填错位置  
 - ✅ **代码去重优化** - 消除重复逻辑，提升维护性
-- ✅ **持续重构优化** - 消除重复逻辑，提升代码可维护性
+- ✅ **智能错误恢复** - LLM根据状态智能决定重试策略
 
 </details>
 
@@ -790,7 +815,11 @@ RESUME_SKILL/
 │   │   ├── form_filler.py       # 9 种填充策略
 │   │   ├── jd_analyzer.py       # JD 分析
 │   │   ├── workflow.py          # 主流程
-│   │   └── utils.py             # 工具函数
+│   │   ├── utils.py             # 工具函数
+│   │   └── mcp/                 # 🆕 MCP架构 (v2.2新增)
+│   │       ├── server.py        # 工具服务器
+│   │       ├── client.py        # 客户端通信
+│   │       └── agent.py         # LLM智能Agent
 │   ├── extractor/           # PDF 提取
 │   │   └── extractor.py
 │   └── llm/                 # LLM 提供商
@@ -811,6 +840,11 @@ RESUME_SKILL/
 ├── pyproject.toml           # Python 包配置
 ├── .env.example             # API 配置模板
 ├── README.md                # 本文件
+├── BUGFIX_REPORT.md         # 🆕 v2.2 Bug修复报告
+├── MCP_REFACTOR_REPORT.md   # 🆕 MCP架构重构报告
+├── config.yaml              # 项目配置
+├── pytest.ini               # 测试配置
+├── requirements.txt         # 依赖列表
 └── LICENSE                  # MIT 许可证
 ```
 

@@ -260,3 +260,7 @@ class BrowserAgent:
 
     def click_submit_button(self) -> bool:
         return self._click_candidate(SUBMIT_KEYWORDS)
+
+    def click_by_keywords(self, keywords: list[str]) -> bool:
+        """Public wrapper for _click_candidate."""
+        return self._click_candidate(keywords)

@@ -87,12 +87,17 @@ def cmd_consolidate(args: argparse.Namespace) -> int:
 
 
 def cmd_apply(args: argparse.Namespace) -> int:
-    from .agent.workflow import run_apply_flow, RunOptions
-
     url = args.url
     if not url:
         print("Error: --url is required")
         return 1
+
+    if args.use_mcp:
+        from .agent.mcp.agent import run_agent
+        run_agent(url)
+        return 0
+
+    from .agent.workflow import run_apply_flow, RunOptions
 
     mode = getattr(args, "mode", "full")
     login_only = mode == "login"
@@ -201,6 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     apply_p.add_argument("--manual-login-first", action="store_true")
     apply_p.add_argument("--headless", action="store_true")
     apply_p.add_argument("--max-fill-rounds", type=int, default=3)
+    apply_p.add_argument("--use-mcp", action="store_true", help="Use MCP Agent mode (LLM dynamically decides next step)")
 
     # setup
     subparsers.add_parser("setup", help="Install dependencies and create default config")
