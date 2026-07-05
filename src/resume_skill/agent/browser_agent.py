@@ -204,15 +204,11 @@ class BrowserAgent:
 
     def close(self) -> None:
         if self._keep_browser_open:
+            # Keep browser running, only disconnect Python references
             self._page = None
-            self._context = None
-            self._browser = None
-            if self._playwright:
-                try:
-                    self._playwright.stop()
-                except Exception:
-                    pass
-                self._playwright = None
+            self._context = None  
+            # Don't set _browser = None to keep reference
+            # Don't call _playwright.stop() to keep browser alive
             return
 
         for attr in ("_page", "_context"):

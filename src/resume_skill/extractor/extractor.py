@@ -31,8 +31,10 @@ class PersonalInfoExtractor:
         if self._llm_client is None:
             try:
                 self._llm_client = create_llm_client(self.config)
-            except RuntimeError:
-                pass
+            except RuntimeError as e:
+                print(f"[WARNING] LLM client initialization failed: {e}")
+                # Return None to let caller handle the missing LLM gracefully
+                return None
         return self._llm_client
 
     @llm_client.setter

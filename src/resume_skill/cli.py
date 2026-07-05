@@ -18,6 +18,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Version info
+__version__ = "0.2.1"
+
 
 def _json_output(data: dict[str, Any]) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
@@ -27,7 +30,8 @@ def cmd_extract(args: argparse.Namespace) -> int:
     from .config import CONFIG
     from .extractor import PersonalInfoExtractor
 
-    extractor = PersonalInfoExtractor(args.personal_info_dir, CONFIG)
+    personal_info_dir = Path(args.personal_info_dir) if args.personal_info_dir else CONFIG.personal_info_dir
+    extractor = PersonalInfoExtractor(personal_info_dir, CONFIG)
 
     if args.pdf:
         pdf_path = Path(args.pdf)
@@ -64,7 +68,8 @@ def cmd_consolidate(args: argparse.Namespace) -> int:
     from .config import CONFIG
     from .extractor import PersonalInfoExtractor
 
-    extractor = PersonalInfoExtractor(args.personal_info_dir, CONFIG)
+    personal_info_dir = Path(args.personal_info_dir) if args.personal_info_dir else CONFIG.personal_info_dir
+    extractor = PersonalInfoExtractor(personal_info_dir, CONFIG)
     profile = extractor.generate_unified_profile()
 
     if args.json:
@@ -164,19 +169,20 @@ def main(argv: list[str] | None = None) -> int:
         description="Resume Skill - AI-powered smart resume auto-fill assistant",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument('--version', action='version', version=f'resume-skill {__version__}')
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # extract
     extract_p = subparsers.add_parser("extract", help="Extract info from resume PDF")
     extract_p.add_argument("--pdf", help="Path to resume PDF")
-    extract_p.add_argument("--personal-info-dir", default="personal_info", help="Personal info directory")
+    extract_p.add_argument("--personal-info-dir", default=None, help="Personal info directory")
     extract_p.add_argument("--no-template", action="store_true", help="Don't update profile_template.md")
     extract_p.add_argument("--json", action="store_true", help="Output in JSON format")
 
     # consolidate
     cons_p = subparsers.add_parser("consolidate", help="Generate unified_profile.yaml from profile_template.md")
-    cons_p.add_argument("--personal-info-dir", default="personal_info", help="Personal info directory")
+    cons_p.add_argument("--personal-info-dir", default=None, help="Personal info directory")
     cons_p.add_argument("--json", action="store_true", help="Output in JSON format")
 
     # apply

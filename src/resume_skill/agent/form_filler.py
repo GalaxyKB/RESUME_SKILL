@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeout
+from playwright.sync_api import Page
 
 from .utils import find_resume_pdf, timestamp
 
@@ -153,11 +153,48 @@ def _resolve_locator(page: Page, item: dict[str, Any]) -> Any:
 
 
 def _resolve_frame(page: Page, frame_url: str) -> Any:
+    """Enhanced frame resolution with multiple fallback strategies."""
     if not frame_url:
         return page
+    
+    # Strategy 1: Exact URL match
     for frame in page.frames:
         if frame.url == frame_url:
             return frame
+    
+    # Strategy 2: URL contains match (for dynamic URLs)
+    base_url = frame_url.split('?')[0].split('#')[0]  # Remove query params and fragments
+    for frame in page.frames:
+        if base_url in frame.url:
+            return frame
+    
+    # Strategy 3: Match by frame name
+    # Extract frame info from extraction phase
+    frame_name = None
+    frame_title = None
+    try:
+        # Try to extract frame name/title from the original extraction
+        # This would need to be stored during extraction phase
+        pass
+    except Exception:
+        pass
+    
+    if frame_name:
+        for frame in page.frames:
+            if frame.name == frame_name:
+                return frame
+    
+    # Strategy 4: Match by domain
+    try:
+        from urllib.parse import urlparse
+        target_domain = urlparse(frame_url).netloc
+        for frame in page.frames:
+            if urlparse(frame.url).netloc == target_domain:
+                return frame
+    except Exception:
+        pass
+    
+    # Fallback to main page
     return page
 
 
@@ -185,27 +222,53 @@ def _fill_text(page: Page, item: dict[str, Any], value: str) -> bool:
     except Exception:
         pass
 
-    # Strategy 3: JS evaluation
+    # Strategy 3: Enhanced JS evaluation with comprehensive event dispatching
     try:
         locator.evaluate(
             """(el, val) => {
                 if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    // Set value using native setter to bypass React/Vue detection
                     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
                         window.HTMLInputElement.prototype, 'value'
                     )?.set || Object.getOwnPropertyDescriptor(
                         window.HTMLTextAreaElement.prototype, 'value'
                     )?.set;
+                    
                     if (nativeInputValueSetter) {
                         nativeInputValueSetter.call(el, val);
                     } else {
                         el.value = val;
                     }
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    // Dispatch comprehensive events for React/Vue compatibility
+                    el.dispatchEvent(new Event('focus', { bubbles: true }));
+                    el.dispatchEvent(new InputEvent('beforeinput', { 
+                        inputType: 'insertText', 
+                        data: val, 
+                        bubbles: true 
+                    }));
+                    el.dispatchEvent(new InputEvent('input', { 
+                        inputType: 'insertText', 
+                        bubbles: true,
+                        cancelable: true
+                    }));
                     el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new Event('blur', { bubbles: true }));
+                    
+                    // Trigger composition events for CJK input compatibility
+                    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(val)) {
+                        el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+                        el.dispatchEvent(new CompositionEvent('compositionend', { 
+                            data: val, 
+                            bubbles: true 
+                        }));
+                    }
                 }
             }""",
             value,
         )
+        # Wait for React/Vue to process events
+        page.wait_for_timeout(200)
         return True
     except Exception:
         pass
@@ -598,7 +661,7 @@ def _fill_contenteditable(page: Page, item: dict[str, Any], value: str) -> bool:
 
 def _fill_upload(page: Page, item: dict[str, Any], resume_path: str) -> bool:
     """Upload a file (resume PDF)."""
-    if not resume_path or not Path(resume_path).exists():
+    if not resume_path or not resume_path.strip() or not Path(resume_path).exists():
         print(f"  Upload skipped: file not found ({resume_path})")
         return False
 
@@ -660,7 +723,7 @@ def _fill_fallback(page: Page, item: dict[str, Any], value: str, resume_path: st
 
 
 def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
-    """Verify that the field was actually filled with the expected value."""
+    """Enhanced verification that the field was actually filled with the expected value."""
     locator = _resolve_locator(page, item)
     if not locator:
         return True  # Can't verify, assume success
@@ -668,23 +731,69 @@ def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
     try:
         tag = str(item.get("tag", "")).lower()
         ftype = str(item.get("type", "")).lower()
+        
+        # Store original value before comparison for debugging
+        original_value = None
+        try:
+            original_value = locator.evaluate("el => el.value || el.textContent || ''")
+        except Exception:
+            pass
 
         if tag == "select":
-            # Check selected option text
-            selected = locator.evaluate("el => el.options[el.selectedIndex]?.textContent || ''")
-            return expected_value.lower() in selected.lower()
+            # Check selected option text and value
+            selected_text = locator.evaluate("el => el.options[el.selectedIndex]?.textContent || ''")
+            selected_value = locator.evaluate("el => el.options[el.selectedIndex]?.value || ''")
+            is_match = (expected_value.lower() in selected_text.lower() or 
+                       expected_value.lower() in selected_value.lower())
+            if not is_match:
+                print(f"  ⚠️ Select verification failed: expected '{expected_value}', got text='{selected_text}', value='{selected_value}'")
+            return is_match
         elif ftype in ("radio", "checkbox"):
-            return True  # Verification is complex, skip
+            # Check if the correct option is selected
+            is_checked = locator.evaluate("el => el.checked")
+            if ftype == "radio":
+                # For radio, verify the selected value matches expected
+                radio_value = locator.evaluate("el => el.value || ''")
+                is_match = is_checked and (expected_value.lower() in radio_value.lower() or radio_value.lower() in expected_value.lower())
+                if not is_match:
+                    print(f"  ⚠️ Radio verification failed: expected '{expected_value}', got checked={is_checked}, value='{radio_value}'")
+                return is_match
+            return is_checked  # For checkbox, just check if it's checked
         elif "file" in ftype:
-            return True  # File upload verification is visual
+            # Check if file input has files
+            file_count = locator.evaluate("el => el.files ? el.files.length : 0")
+            return file_count > 0
         else:
-            # Check input/textarea value
+            # Enhanced text field verification
             actual = locator.evaluate("el => el.value || el.textContent || ''")
             if not actual.strip():
+                print(f"  ⚠️ Text verification failed: field is empty, expected '{expected_value}'")
                 return False
-            # Allow partial match (e.g., long text might be truncated)
-            return expected_value.lower() in actual.lower() or actual.lower() in expected_value.lower()
-    except Exception:
+            
+            # Strict verification for exact matches
+            if actual.strip() == expected_value.strip():
+                return True
+                
+            # Looser verification for partial matches (with length check)
+            is_partial_match = (expected_value.lower() in actual.lower() or 
+                              actual.lower() in expected_value.lower())
+            
+            # Additional check: ensure the field hasn't been filled with wrong content
+            # If actual value is very different from expected (e.g., different field entirely)
+            if len(actual) > 10 and len(expected_value) > 10:
+                # Calculate simple similarity
+                common_chars = set(actual.lower()) & set(expected_value.lower())
+                similarity = len(common_chars) / max(len(set(actual.lower())), len(set(expected_value.lower())))
+                if similarity < 0.3:
+                    print(f"  ⚠️ Text verification failed: low similarity. Expected '{expected_value}', got '{actual}'")
+                    return False
+            
+            if not is_partial_match:
+                print(f"  ⚠️ Text verification failed: expected '{expected_value}', got '{actual}'")
+                
+            return is_partial_match
+    except Exception as e:
+        print(f"  ⚠️ Verification error: {e}")
         return True  # Can't verify, assume success
 
 

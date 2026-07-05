@@ -19,6 +19,12 @@ from .utils import print_section
 
 RULE_BASED_SCRIPT = r'''
 () => {
+  // CSS.escape polyfill for compatibility
+  function cssEscape(value) {
+    if (window.CSS && window.CSS.escape) return window.CSS.escape(value);
+    return value.replace(/[!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]/g, '\\$&');
+  }
+
   const isVisible = (el) => {
     if (!el || !el.parentElement) return false;
     const style = window.getComputedStyle(el);
@@ -62,7 +68,9 @@ RULE_BASED_SCRIPT = r'''
 
     for (const el of elements) {
       if (seenElements.has(el)) continue;
-      if (!isVisible(el)) continue;
+      
+      // Include both visible and hidden fields (for multi-tab forms)
+      const visible = isVisible(el);
       seenElements.add(el);
 
       const fieldInfo = extractFieldContext(el);
@@ -92,6 +100,7 @@ RULE_BASED_SCRIPT = r'''
         radio_group: (inputType === 'radio') ? (el.name || el.getAttribute('data-group') || '') : '',
         radio_value: (inputType === 'radio') ? el.value : '',
         checked: (inputType === 'radio' || inputType === 'checkbox') ? el.checked : undefined,
+        visible: visible,  // Track visibility for debugging
         bounding_rect: {
           x: Math.round(el.getBoundingClientRect().x),
           y: Math.round(el.getBoundingClientRect().y),
@@ -133,7 +142,7 @@ RULE_BASED_SCRIPT = r'''
     // Strategy 1: label[for] association
     const id = el.id;
     if (id) {
-      const labelEl = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+      const labelEl = document.querySelector(`label[for="${cssEscape(id)}"]`);
       if (labelEl) {
         label = (labelEl.textContent || '').trim();
       }
@@ -241,7 +250,7 @@ RULE_BASED_SCRIPT = r'''
     // Collect radio group options
     const inputType = (el.getAttribute('type') || '').toLowerCase();
     if (inputType === 'radio' && el.name) {
-      const radios = document.querySelectorAll(`input[name="${CSS.escape(el.name)}"]`);
+      const radios = document.querySelectorAll(`input[name="${cssEscape(el.name)}"]`);
       for (const radio of radios) {
         // Find the label for this radio
         let radioLabel = '';
@@ -252,7 +261,7 @@ RULE_BASED_SCRIPT = r'''
         if (!radioLabel) {
           const radioId = radio.id;
           if (radioId) {
-            const labelEl = document.querySelector(`label[for="${CSS.escape(radioId)}"]`);
+            const labelEl = document.querySelector(`label[for="${cssEscape(radioId)}"]`);
             if (labelEl) radioLabel = (labelEl.textContent || '').trim();
           }
         }
@@ -276,10 +285,47 @@ RULE_BASED_SCRIPT = r'''
   }
 
   function generateSelector(el) {
-    if (el.id) return `#${CSS.escape(el.id)}`;
-    if (el.name) return `${el.tagName.toLowerCase()}[name="${el.name}"]`;
+    // Priority 1: Stable attributes (name, id, data-*)
+    if (el.name && el.name.trim()) {
+      return `${el.tagName.toLowerCase()}[name="${el.name}"]`;
+    }
+    if (el.id && el.id.trim()) {
+      return `#${cssEscape(el.id)}`;
+    }
+    
+    // Priority 2: Data attributes
+    const dataField = el.getAttribute('data-field') || el.getAttribute('data-name') || el.getAttribute('data-testid');
+    if (dataField) {
+      return `[data-field="${cssEscape(dataField)}"], [data-name="${cssEscape(dataField)}"], [data-testid="${cssEscape(dataField)}"]`;
+    }
+    
+    // Priority 3: ARIA label
+    const ariaLabel = el.getAttribute('aria-label');
+    if (ariaLabel && ariaLabel.length < 50) {
+      return `[aria-label="${cssEscape(ariaLabel)}"]`;
+    }
+    
+    // Priority 4: Unique class combinations
+    if (el.className && typeof el.className === 'string') {
+      const classes = el.className.split(/\s+/).filter(c => 
+        c.trim() && 
+        c.length < 25 && 
+        !c.startsWith('_') && 
+        !c.includes('--') &&
+        !c.match(/^(css-|sc-|emotion-)/)  // Exclude generated classes
+      );
+      if (classes.length > 0) {
+        const classSelector = `.${classes.map(c => cssEscape(c)).join('.')}`;
+        // Check if this class combo is unique
+        try {
+          if (document.querySelectorAll(classSelector).length === 1) {
+            return classSelector;
+          }
+        } catch (e) {}
+      }
+    }
 
-    // Try to build a meaningful selector
+    // Fallback: Build hierarchical path with stable identifiers
     let parts = [];
     let current = el;
     let depth = 0;
@@ -288,7 +334,7 @@ RULE_BASED_SCRIPT = r'''
       let part = current.tagName.toLowerCase();
 
       if (current.id) {
-        parts.unshift(`#${CSS.escape(current.id)}`);
+        parts.unshift(`#${cssEscape(current.id)}`);
         break;
       }
 
@@ -297,13 +343,13 @@ RULE_BASED_SCRIPT = r'''
           c.trim() && c.length < 25 && !c.startsWith('_') && !c.includes('--')
         );
         if (classes.length > 0) {
-          part += `.${CSS.escape(classes[0])}`;
+          part += `.${cssEscape(classes[0])}`;
         }
       }
 
-      // Add nth-child if needed
+      // Only use nth-of-type as last resort
       const parent = current.parentElement;
-      if (parent) {
+      if (parent && depth === 0) {
         const siblings = Array.from(parent.children).filter(s => s.tagName === current.tagName);
         if (siblings.length > 1) {
           const idx = siblings.indexOf(current) + 1;
@@ -369,6 +415,8 @@ def extract_fields_rule_based(page: Page) -> list[dict[str, Any]]:
             dedupe.add(sig)
             item["field_id"] = f"field_{str(counter).zfill(3)}"
             item["frame_url"] = frame.url
+            item["frame_name"] = frame.name or ""
+            item["frame_title"] = frame.title or ""
             aggregated.append(item)
             counter += 1
 
@@ -404,7 +452,12 @@ def merge_extraction_results(
     Strategy: Use rule-based as the backbone (guaranteed to have valid
     selectors), then overlay AI semantic info (matched_data, fill_strategy,
     etc.) onto matching fields.  Any AI-only fields are appended at the end.
+    
+    Also merges radio/checkbox groups to avoid duplicates.
     """
+    # First pass: merge radio/checkbox groups
+    rule_fields = _merge_radio_checkbox_groups(rule_fields)
+    
     ai_fields = _index_ai_fields(ai_result)
     rule_by_selector: dict[str, dict[str, Any]] = {}
     for f in rule_fields:
@@ -479,6 +532,58 @@ def merge_extraction_results(
 
     ai_count = sum(1 for f in merged if "ai" in f.get("source", ""))
     print(f"[Merged] Total: {len(merged)} fields (with AI enrichment: {ai_count}, rule-only: {len(merged) - ai_count})")
+    return merged
+
+
+def _merge_radio_checkbox_groups(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge radio buttons and checkboxes with same name into grouped fields."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    non_grouped: list[dict[str, Any]] = []
+    
+    for field in fields:
+        field_type = field.get("field_type", "")
+        name = field.get("name", "")
+        radio_group = field.get("radio_group", "")
+        
+        # Group radio buttons by name or radio_group
+        if "radio" in field_type and (name or radio_group):
+            group_key = f"radio_{radio_group or name}"
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(field)
+        # Group checkboxes by name if they share the same name
+        elif "checkbox" in field_type and name:
+            group_key = f"checkbox_{name}"
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(field)
+        else:
+            non_grouped.append(field)
+    
+    # Merge groups into single fields with options
+    merged = non_grouped.copy()
+    for group_key, group_fields in groups.items():
+        if len(group_fields) <= 1:
+            merged.extend(group_fields)
+            continue
+            
+        # Create merged field from first field in group
+        base_field = group_fields[0].copy()
+        options = []
+        
+        for field in group_fields:
+            option = {
+                "value": field.get("value", ""),
+                "label": field.get("field_label", ""),
+                "selector": field.get("selector", ""),
+                "xpath": field.get("xpath", ""),
+            }
+            options.append(option)
+        
+        base_field["options"] = options
+        base_field["field_label"] = f"{base_field.get('field_label', '')} (group)"
+        merged.append(base_field)
+    
     return merged
 
 
@@ -565,6 +670,36 @@ def extract_form_fields(page: Page, profile: dict[str, Any], llm_client: Any) ->
 
 
 def _extract_form_html(page: Page) -> str:
+    """Extract form HTML from page, including iframe content."""
+    htmls = []
+    
+    # Extract from main frame
+    main_html = _extract_form_html_from_frame(page)
+    if main_html:
+        htmls.append(f"<!-- MAIN FRAME -->\n{main_html}")
+    
+    # Extract from all frames
+    try:
+        frames = page.frames
+        for i, frame in enumerate(frames):
+            if frame == page.main_frame:
+                continue  # Skip main frame, already processed
+            try:
+                frame_html = _extract_form_html_from_frame(frame)
+                if frame_html:
+                    frame_name = frame.name or f"frame_{i}"
+                    frame_url = frame.url
+                    htmls.append(f"<!-- FRAME: {frame_name} ({frame_url}) -->\n{frame_html}")
+            except Exception as e:
+                print(f"Warning: Failed to extract from frame {i}: {e}")
+    except Exception as e:
+        print(f"Warning: Failed to enumerate frames: {e}")
+    
+    return "\n\n".join(htmls) if htmls else ""
+
+
+def _extract_form_html_from_frame(page_or_frame) -> str:
+    """Extract form HTML from a specific frame."""
     script = '''
     () => {
         const formSelectors = [
@@ -600,24 +735,12 @@ def _extract_form_html(page: Page) -> str:
         return bestElement ? bestElement.outerHTML : document.body.outerHTML;
     }
     '''
-
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            page.wait_for_timeout(1000)
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
-            form_html = page.evaluate(script)
-            if form_html and len(form_html) > 100:
-                input_count = page.evaluate(
-                    '() => document.querySelectorAll("input, textarea, select, [role=\\"combobox\\"]").length'
-                )
-                print(f"[AI] Extracted {len(form_html)} chars HTML, {input_count} input elements")
-                return form_html
-        except Exception as e:
-            print(f"[AI] HTML extraction attempt {attempt+1} failed: {e}")
-
-    print("[AI] Failed to extract HTML after retries")
-    return ""
+    
+    try:
+        return page_or_frame.evaluate(script)
+    except Exception as e:
+        print(f"Warning: Form HTML extraction failed: {e}")
+        return ""
 
 
 def _clean_html(html: str) -> str:

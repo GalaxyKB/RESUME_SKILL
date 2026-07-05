@@ -10,7 +10,28 @@ from dotenv import load_dotenv
 import yaml
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+def _get_project_root() -> Path:
+    """
+    Get project root directory, handling both development and pip installation modes.
+    Priority: RESUME_SKILL_ROOT env var > current working directory
+    """
+    # First try environment variable
+    env_root = os.getenv("RESUME_SKILL_ROOT")
+    if env_root:
+        return Path(env_root).resolve()
+    
+    # For development mode (pip install -e .)
+    # __file__ points to source code directory
+    source_root = Path(__file__).resolve().parent.parent.parent
+    if (source_root / "pyproject.toml").exists():
+        return source_root
+    
+    # For pip installation or unknown environment
+    # Fall back to current working directory
+    return Path.cwd()
+
+
+PROJECT_ROOT = _get_project_root()
 
 DEFAULT_DEEPSEEK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro-260425"
@@ -123,6 +144,11 @@ class AppConfig:
 
 
 def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
+    # Update global PROJECT_ROOT if project_dir is provided
+    global PROJECT_ROOT
+    if project_dir:
+        PROJECT_ROOT = project_dir
+    
     root = project_dir or PROJECT_ROOT
 
     env_path = root / ".env"

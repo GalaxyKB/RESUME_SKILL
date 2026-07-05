@@ -70,7 +70,10 @@ def _load_profile() -> dict[str, Any]:
     profile_path = CONFIG.unified_profile_path
     if profile_path.exists():
         return load_yaml(profile_path) or {}
-    return load_yaml(CONFIG.project_root / "data" / "profile.yaml") or {}
+    
+    print(f"❌ Profile not found at {profile_path}")
+    print("💡 Please run: resume-skill consolidate")
+    return {}
 
 
 def _print_profile_summary(profile: dict[str, Any]) -> None:
@@ -297,9 +300,9 @@ def run_apply_flow(url: str, options: RunOptions | None = None) -> int:
         while True:
             print_section(f"Form Analysis - Round {round_index}")
 
-            # Dual-channel extraction
+            # Dual-channel extraction with retry
             if llm_client:
-                fields = extract_form_fields(browser.page, profile, llm_client)
+                fields = _extract_fields_with_retry(browser, profile, llm_client)
             else:
                 from .form_extractor import extract_fields_rule_based
                 fields = extract_fields_rule_based(browser.page)
@@ -349,6 +352,8 @@ def run_apply_flow(url: str, options: RunOptions | None = None) -> int:
 
             action = input(f"Enter {run_options.next_page_signal} to continue to next page, or {run_options.done_signal}: ").strip()
             if action == run_options.next_page_signal:
+                print("⏳ Waiting for page refresh...")
+                browser.page.wait_for_timeout(2000)  # Wait for page to update
                 round_index += 1
                 continue
             break
