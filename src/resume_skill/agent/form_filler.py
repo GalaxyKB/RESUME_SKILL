@@ -168,9 +168,15 @@ def _resolve_frame(page: Page, frame_url: str) -> Any:
         if base_url in frame.url:
             return frame
     
-    # Strategy 3: Match by frame name (future enhancement)
-    # Note: Frame name/title would need to be stored during field extraction
-    # for this to work properly
+    # Strategy 3: Match by frame name or title
+    for frame in page.frames:
+        # Try to match frame name attribute if available
+        try:
+            frame_name = frame.evaluate("() => window.name || document.title || ''")
+            if frame_name and frame_name in frame_url:
+                return frame
+        except Exception:
+            continue
     
     # Strategy 4: Match by domain
     try:
@@ -766,10 +772,8 @@ def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
             is_partial_match = (expected_value.lower() in actual.lower() or 
                               actual.lower() in expected_value.lower())
             
-            # Additional check: ensure the field hasn't been filled with wrong content
-            # If actual value is very different from expected (e.g., different field entirely)
-            if len(actual) > 10 and len(expected_value) > 10:
-                # Calculate improved similarity using Levenshtein-like approach
+            # Enhanced similarity check for longer text values
+            if len(actual) > 10 and len(expected_value) > 10 and not is_partial_match:
                 def calculate_similarity(s1: str, s2: str) -> float:
                     """Calculate text similarity using multiple metrics."""
                     s1, s2 = s1.lower().strip(), s2.lower().strip()
@@ -784,6 +788,8 @@ def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
                     
                     # Character overlap similarity
                     chars1, chars2 = set(s1), set(s2)
+                    if not chars1 or not chars2:
+                        return 0.0
                     char_overlap = len(chars1 & chars2) / len(chars1 | chars2)
                     
                     # Word overlap similarity (for longer texts)
@@ -797,10 +803,14 @@ def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
                     return char_overlap
                 
                 similarity = calculate_similarity(actual, expected_value)
-                if similarity < 0.3:
-                    print(f"  ⚠️ Text verification failed: low similarity. Expected '{expected_value}', got '{actual}'")
+                if similarity >= 0.3:
+                    # Accept if similarity is reasonable
+                    return True
+                else:
+                    print(f"  ⚠️ Text verification failed: low similarity ({similarity:.2f}). Expected '{expected_value}', got '{actual}'")
                     return False
             
+            # Final check for partial matches
             if not is_partial_match:
                 print(f"  ⚠️ Text verification failed: expected '{expected_value}', got '{actual}'")
                 

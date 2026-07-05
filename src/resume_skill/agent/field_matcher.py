@@ -253,69 +253,67 @@ def match_fields_with_llm(
     return fill_plan
 
 
+def _rule_match_single_field(field: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
+    """Rule-based matching for a single field."""
+    field_text = _compose_field_text(field)
+    tag = str(field.get("tag", "")).lower()
+    ftype = str(field.get("type", "")).lower()
+    value = ""
+    source = ""
+    confidence = 0.0
+    action = "manual"
+    fill_strategy = _infer_fill_strategy(field)
+    reason = "No match found"
+
+    if _is_sensitive(field_text):
+        action = "manual"
+        reason = "Sensitive field, manual handling required"
+    elif _is_excluded(field_text):
+        action = "skip"
+        reason = "Excluded field"
+    elif tag == "input" and ftype == "file":
+        if _match_keywords(field_text, RESUME_FILE_KEYWORDS):
+            value = "RESUME_FILE_PATH"
+            confidence = 0.99
+            action = "auto_fill"
+            fill_strategy = "upload"
+            reason = "Resume upload field"
+    else:
+        for rule_key, keywords, source_path, rule_conf in FIELD_RULES_FALLBACK:
+            if _match_keywords(field_text, keywords):
+                value = _resolve_profile_value(profile, source_path)
+                source = source_path
+                confidence = rule_conf
+                action = _determine_action(value, confidence, field_text, fill_strategy)
+                reason = f"Keyword match: {keywords[0]}" if value else f"Matched but no data: {keywords[0]}"
+                if not value:
+                    confidence *= 0.5
+                break
+
+    return {
+        "field_id": field.get("field_id", ""),
+        "selector": field.get("selector", ""),
+        "xpath": field.get("xpath", ""),
+        "frame_url": field.get("frame_url", ""),
+        "field_label": field.get("field_label", field.get("label", "")),
+        "field_type": f"{tag}/{ftype}".strip("/") if ftype else tag,
+        "role": field.get("role", ""),
+        "fill_strategy": fill_strategy,
+        "value": value,
+        "source": source,
+        "confidence": round(float(confidence), 2),
+        "action": action,
+        "reason": reason,
+        "options": field.get("options", []),
+    }
+
+
 def match_fields_rule_based(
     fields: list[dict[str, Any]],
     profile: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Fallback: rule-based keyword matching."""
-    fill_plan: list[dict[str, Any]] = []
-
-    for field in fields:
-        field_text = _compose_field_text(field)
-        tag = str(field.get("tag", "")).lower()
-        field_type = str(field.get("type", "")).lower()
-        value = ""
-        source = ""
-        confidence = 0.0
-        action = "manual"
-        fill_strategy = _infer_fill_strategy(field)
-        reason = "No match found"
-
-        if _is_sensitive(field_text):
-            action = "manual"
-            reason = "Sensitive field, manual handling required"
-        elif _is_excluded(field_text):
-            action = "skip"
-            reason = "Excluded field"
-        elif tag == "input" and field_type == "file":
-            if _match_keywords(field_text, RESUME_FILE_KEYWORDS):
-                value = "RESUME_FILE_PATH"
-                confidence = 0.99
-                action = "auto_fill"
-                fill_strategy = "upload"
-                reason = "Resume upload field"
-        else:
-            for rule_key, keywords, source_path, rule_conf in FIELD_RULES_FALLBACK:
-                if _match_keywords(field_text, keywords):
-                    value = _resolve_profile_value(profile, source_path)
-                    source = source_path
-                    confidence = rule_conf
-                    action = "auto_fill" if confidence >= 0.9 and value else "review"
-                    reason = f"Keyword match: {keywords[0]}"
-                    if not value:
-                        confidence *= 0.5
-                        action = "review"
-                        reason = f"Matched but no data for: {keywords[0]}"
-                    break
-
-        fill_plan.append({
-            "field_id": field.get("field_id", ""),
-            "selector": field.get("selector", ""),
-            "xpath": field.get("xpath", ""),
-            "frame_url": field.get("frame_url", ""),
-            "field_label": field.get("field_label", field.get("label", "")),
-            "field_type": f"{tag}/{field_type}".strip("/") if field_type else tag,
-            "role": field.get("role", ""),
-            "fill_strategy": fill_strategy,
-            "value": value,
-            "source": source,
-            "confidence": round(float(confidence), 2),
-            "action": action,
-            "reason": reason,
-            "options": field.get("options", []),
-        })
-
-    return fill_plan
+    return [_rule_match_single_field(field, profile) for field in fields]
 
 
 def _prepare_fields_for_prompt(fields: list[dict[str, Any]]) -> str:
@@ -437,54 +435,5 @@ def _determine_action(value: str, confidence: float, field_text: str, fill_strat
 
 def _apply_rule_fallback(fill_plan: list[dict[str, Any]], field: dict[str, Any], profile: dict[str, Any]) -> None:
     """Apply rule-based matching for a single unmatched field and append to fill_plan."""
-    field_text = _compose_field_text(field)
-    tag = str(field.get("tag", "")).lower()
-    ftype = str(field.get("type", "")).lower()
-    value = ""
-    source = ""
-    confidence = 0.0
-    action = "manual"
-    fill_strategy = _infer_fill_strategy(field)
-    reason = "No match found"
-
-    if _is_sensitive(field_text):
-        action = "manual"
-        reason = "Sensitive field"
-    elif _is_excluded(field_text):
-        action = "skip"
-        reason = "Excluded field"
-    elif tag == "input" and ftype == "file":
-        if _match_keywords(field_text, RESUME_FILE_KEYWORDS):
-            value = "RESUME_FILE_PATH"
-            confidence = 0.99
-            action = "auto_fill"
-            fill_strategy = "upload"
-            reason = "Resume upload"
-    else:
-        for rule_key, keywords, source_path, rule_conf in FIELD_RULES_FALLBACK:
-            if _match_keywords(field_text, keywords):
-                value = _resolve_profile_value(profile, source_path)
-                source = source_path
-                confidence = rule_conf
-                action = _determine_action(value, confidence, field_text, fill_strategy)
-                reason = f"Rule: {keywords[0]}" if value else f"Rule matched but no data: {keywords[0]}"
-                if not value:
-                    confidence *= 0.5
-                break
-
-    fill_plan.append({
-        "field_id": field.get("field_id", ""),
-        "selector": field.get("selector", ""),
-        "xpath": field.get("xpath", ""),
-        "frame_url": field.get("frame_url", ""),
-        "field_label": field.get("field_label", ""),
-        "field_type": f"{tag}/{ftype}".strip("/") if ftype else tag,
-        "role": field.get("role", ""),
-        "fill_strategy": fill_strategy,
-        "value": value,
-        "source": source,
-        "confidence": round(confidence, 2),
-        "action": action,
-        "reason": reason,
-        "options": field.get("options", []),
-    })
+    result = _rule_match_single_field(field, profile)
+    fill_plan.append(result)
