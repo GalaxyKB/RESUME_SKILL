@@ -6,11 +6,7 @@
 
 ### 🤖 AI 驱动的智能网申助手
 
-<h4>
-<span style="background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-一键自动填充网申表单，让求职投递效率提升 10 倍
-</span>
-</h4>
+<h4>一键自动填充网申表单，让求职投递效率提升 10 倍</h4>
 
 ---
 
@@ -28,14 +24,7 @@
   <img src="https://img.shields.io/badge/🌐_Cross_Platform-4ECDC4?style=for-the-badge" alt="Cross Platform"/>
 </div>
 
----
 
-### 🏆 2024 年度最智能的求职助手
-**🔥 已帮助 1000+ 求职者节省 90% 网申时间！**
-
-</div>
-
----
 
 ## 💥 为什么选择 RESUME_SKILL？
 
@@ -54,7 +43,7 @@
 - ⏰ 单个岗位耗时 10-15 分钟  
 - 😵 投递 50 家 = 1000 次重复劳动
 - 🤯 信息分散，容易出错
-- � 时间成本巨大，影响求职效率
+- 💸 时间成本巨大，影响求职效率
 
 </td>
 <td width="50%">
@@ -116,7 +105,7 @@
 <tr>
 <td><b>📊 多平台投递</b></td>
 <td>每次重新填写</td>
-<td>� 一次配置，多次复用</td>
+<td>🔄 一次配置，多次复用</td>
 <td><span style="background-color: #FF9FF3; color: white; padding: 2px 6px; border-radius: 3px;"><b>∞</b></span></td>
 </tr>
 </tbody>
@@ -155,7 +144,7 @@ React/Vue深度适配
 <td width="33%" align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Locked.png" alt="Lock" width="50" height="50" />
 <br/>
-<b>� 隐私至上</b>
+<b>🔒 隐私至上</b>
 <br/>
 本地存储 + 敏感字段保护<br/>
 零数据上传
@@ -168,7 +157,7 @@ React/Vue深度适配
 
 <div align="center">
 
-| 🔥 **AI 模型** | 🎯 **自动化** | �️ **数据处理** | 🌐 **前端适配** |
+| 🔥 **AI 模型** | 🎯 **自动化** | 🛠️ **数据处理** | 🌐 **前端适配** |
 |:---:|:---:|:---:|:---:|
 | ![DeepSeek](https://img.shields.io/badge/DeepSeek-V4_Pro-FF6B6B?style=flat-square&logo=openai) | ![Playwright](https://img.shields.io/badge/Playwright-45BA4B?style=flat-square&logo=playwright) | ![PyPDF](https://img.shields.io/badge/PyPDF2-3776AB?style=flat-square&logo=python) | ![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react) |
 | ![OpenAI](https://img.shields.io/badge/OpenAI-GPT4-412991?style=flat-square&logo=openai) | ![Chromium](https://img.shields.io/badge/Chromium-4285F4?style=flat-square&logo=googlechrome) | ![YAML](https://img.shields.io/badge/YAML-CB171E?style=flat-square&logo=yaml) | ![Vue](https://img.shields.io/badge/Vue.js-4FC08D?style=flat-square&logo=vue.js) |
@@ -200,7 +189,7 @@ React/Vue深度适配
 
 - ✅ **智能验证系统** - 增强填充验证，及时发现填错位置  
 - ✅ **代码去重优化** - 消除重复逻辑，提升维护性
-- ✅ **全面测试覆盖** - 15+ 单元测试，确保代码质量
+- ✅ **持续重构优化** - 消除重复逻辑，提升代码可维护性
 
 </details>
 
@@ -586,7 +575,7 @@ resume-skill consolidate
 graph LR
     A[🔍 字段识别] --> B[🤖 AI匹配]
     B --> C[✍️ 自动填充]  
-    C --> D[� 生成报告]
+    C --> D[📊 生成报告]
     D --> E[📸 保存截图]
     
     style A fill:#e1f5fe
@@ -1106,7 +1095,7 @@ RESUME_SKILL/
 
 ---
 
-## � 快速命令参考
+## 💻 快速命令参考
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Desktop%20Computer.png" alt="Terminal" width="60" height="60" />
@@ -1114,7 +1103,7 @@ RESUME_SKILL/
 
 <div align="center">
 
-### � 命令速查表 - 复制即用！
+### 📋 命令速查表 - 复制即用！
 
 </div>
 
@@ -1287,7 +1276,7 @@ API 密钥 .env 文件保护<br/>
 
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Heart%20on%20Fire.png" alt="Heart" width="60" height="60" />
 
-### � 开源需要你的支持！
+### 💪 开源需要你的支持！
 
 </div>
 
@@ -1335,7 +1324,7 @@ API 密钥 .env 文件保护<br/>
 
 ---
 
-## �📚 更多资源
+## 📚 更多资源
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Books.png" alt="Books" width="50" height="50" />
@@ -1394,7 +1383,7 @@ API 密钥 .env 文件保护<br/>
 </span>
 </h3>
 
-### 🏆 加入 1000+ 用户，开启高效求职之旅！
+### 🤝 加入开源社区，共同打造更好的求职工具！
 
 <div align="center">
 <a href="https://github.com/GalaxyKB/RESUME_SKILL">
@@ -1405,6 +1394,6 @@ API 密钥 .env 文件保护<br/>
 ---
 
 <p><i>⚡ RESUME_SKILL - 让每一次求职投递都精准高效！</i></p>
-<p><i>🎯 Version v2.2 - 史上最稳定智能的求职助手</i></p>
+<p><i>🎯 Version v2.2</i></p>
 
 </div>
