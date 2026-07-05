@@ -1,13 +1,9 @@
 # ==========================================
 # RESUME_SKILL .gitignore
-# 隐私和安全配置
+# Privacy and security configurations
 # ==========================================
 
-# ==========================================
-# 敏感信息（绝不提交）
-# ==========================================
-
-# 环境变量和API密钥
+# Sensitive information - NEVER commit
 .env
 .env.local
 .env.*.local
@@ -15,34 +11,37 @@
 *.key
 *.secret
 
-# 个人数据和简历
+# Personal data and resumes
 personal_info/unified_profile.yaml
 personal_info/resume/*
 !personal_info/resume/.gitkeep
+personal_info/formal_resume/*
+!personal_info/formal_resume/.gitkeep
+personal_info/general_information/*
+!personal_info/general_information/.gitkeep
 personal_info/*.pdf
 
-# 输出和记录
+# Output and records
 outputs/
 logs/
 records/
 *.log
 
-# 浏览器会话和缓存（包含登录信息）
+# Browser sessions and cache (contains login info)
 .session/
 .cache/
 .cookies/
 
-# 应用数据
+# Application data
 data/
 
 # ==========================================
-# 开发环境
+# Development environment
 # ==========================================
 .venv/
 venv/
 env/
 ENV/
-.venv/
 
 # ==========================================
 # Python
@@ -64,15 +63,13 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
 # ==========================================
-# IDE和编辑器
+# IDE and editors
 # ==========================================
 .vscode/
 .idea/
@@ -85,24 +82,17 @@ MANIFEST
 .settings/
 
 # ==========================================
-# 操作系统
+# OS files
 # ==========================================
 Thumbs.db
 .DS_Store
 desktop.ini
-*.swp
-*.swo
-*~
 
-# 操作系统
-.DS_Store
-Thumbs.db
+# ==========================================
+# Continue config (not part of this project)
+# ==========================================
+.continue/
 
-# 环境
-.env
-.env.local
-*.env
-
-# 临时文件
+# Temporary files
 *.tmp
 *.bak

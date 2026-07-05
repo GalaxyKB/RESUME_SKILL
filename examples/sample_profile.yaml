@@ -1,0 +1,76 @@
+personal:
+  name_cn: 张明
+  name_en: Zhang Ming
+  gender: 男
+  birthday: '2001-03-15'
+  email: zhangming@example.com
+  phone: '13912345678'
+  wechat: zhangming_wx
+  location: 北京市海淀区
+  target_location: 北京
+education:
+- school: 北京大学
+  degree: 本科
+  major: 计算机科学与技术
+  start_date: '2019.09'
+  end_date: '2023.06'
+  gpa: 3.8/4.0（专业排名 15/200）
+experience:
+  jobs: []
+  internships:
+  - company: 字节跳动
+    position: 算法实习生
+    start_date: '2022.06'
+    end_date: '2022.09'
+    description: 参与推荐系统算法优化，完成特征工程和模型训练全流程；使用 TensorFlow 构建深度学习模型，
+      通过 A/B 测试验证 CTR 提升 5%；负责数据处理管道搭建，日均处理千万级样本。
+projects:
+- name: 智能问答系统
+  role: 核心开发者
+  start_date: '2022.12'
+  end_date: '2023.05'
+  description: 基于 RAG 架构构建智能问答系统，支持多轮对话和知识库检索；设计混合检索策略，融合 BM25
+    和语义向量检索，通过 RRF 融合排序；实现 Agentic RAG，支持问题改写、多跳检索和答案反思。
+  tech_stack: Python、LangChain、FAISS、FastAPI、Docker
+- name: 代码审查助手
+  role: 独立开发者
+  start_date: '2023.03'
+  end_date: '2023.06'
+  description: 基于 LLM 的自动化代码审查工具，支持多种编程语言；实现差异分析、风险识别和改进建议生成；支持
+    Git 集成，自动在 PR 中添加审查评论。
+  tech_stack: Python、OpenAI API、GitHub API、React
+skills:
+  programming_languages:
+  - Python
+  - C++
+  - JavaScript
+  frameworks:
+  - PyTorch
+  - TensorFlow
+  - FastAPI
+  - Django
+  tools:
+  - Git
+  - Docker
+  - Kubernetes
+  - MySQL
+  - Redis
+  domains:
+  - 推荐系统
+  - NLP
+  - RAG
+  - MLOps
+awards:
+- name: ACM-ICPC 区域赛银牌
+  date: '2021.11'
+  description: ''
+- name: 国家奖学金
+  date: '2022.10'
+  description: ''
+self_introduction:
+  short: 北京大学计算机科学与技术本科，GPA 3.8/4.0。掌握 Python、深度学习、推荐系统及
+    NLP 技术，有字节跳动算法实习经验。独立开发智能问答系统和代码审查助手，熟悉 RAG 架构和 LLM 应用开发。
+  medium: 我是北京大学计算机科学与技术专业本科生，GPA 3.8/4.0（专业前 10%）。具备扎实的编程与算法能力，精通
+    Python，深入掌握深度学习、推荐系统和 NLP 技术。曾在字节跳动担任算法实习生，参与推荐系统优化，通过特征工程和模型改进实现
+    CTR 提升 5%。\n\n项目方面，自主开发了基于 RAG 架构的智能问答系统，设计混合检索策略并实现 Agentic RAG；另一项目代码审查助手基于
+    LLM 实现自动化代码审查，支持 Git 集成和多种编程语言。\n\n我热衷于 AI 应用和系统开发方向，具备独立研究和快速工程落地的能力。
