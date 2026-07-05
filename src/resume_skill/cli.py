@@ -207,6 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     apply_p.add_argument("--headless", action="store_true")
     apply_p.add_argument("--max-fill-rounds", type=int, default=3)
     apply_p.add_argument("--use-mcp", action="store_true", help="Use MCP Agent mode (LLM dynamically decides next step)")
+    apply_p.add_argument("--resume", default="", help="从指定 checkpoint 文件恢复 MCP Agent session")
 
     # setup
     subparsers.add_parser("setup", help="Install dependencies and create default config")
