@@ -67,7 +67,7 @@
 <tr>
 <th>🔧 功能模块</th>
 <th>🗿 传统方式</th>
-<th>🚀 RESUME_SKILL v2.2</th>
+<th>🚀 RESUME_SKILL v2.3</th>
 <th>📈 提升倍数</th>
 </tr>
 </thead>
@@ -132,12 +132,12 @@
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="60" height="60" />
 </div>
 
-### 🎊 v2.2 重大更新 - 终极稳定版
+### 🎊 v2.3 重大更新 - 智能增强版
 
 <div align="center">
 <table>
 <tr>
-<td width="33%" align="center">
+<td width="25%" align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Brain.png" alt="Brain" width="50" height="50" />
 <br/>
 <b>🧠 AI 智能引擎</b>
@@ -145,7 +145,7 @@
 双通道提取 + 三阶匹配<br/>
 语义理解 + 规则兜底
 </td>
-<td width="33%" align="center">
+<td width="25%" align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Shield.png" alt="Shield" width="50" height="50" />
 <br/>
 <b>🛡️ 全端兼容</b>
@@ -153,13 +153,21 @@
 支持IE兼容模式<br/>
 React/Vue深度适配
 </td>
-<td width="33%" align="center">
+<td width="25%" align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Locked.png" alt="Lock" width="50" height="50" />
 <br/>
 <b>🔒 隐私至上</b>
 <br/>
 本地存储 + 敏感字段保护<br/>
 零数据上传
+</td>
+<td width="25%" align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Chart%20Increasing.png" alt="Monitor" width="50" height="50" />
+<br/>
+<b>📊 智能监控</b>
+<br/>
+决策链记录 + 状态追踪<br/>
+Checkpoint恢复
 </td>
 </tr>
 </table>
@@ -176,7 +184,7 @@ React/Vue深度适配
 
 </div>
 
-### ⚡ v2.2 终极稳定版 - MCP架构重构
+### ⚡ v2.3 智能增强版 - 三大新方向
 
 <details>
 <summary><b>🏗️ MCP架构重构</b> - 全新的智能Agent系统</summary>
@@ -816,10 +824,12 @@ RESUME_SKILL/
 │   │   ├── jd_analyzer.py       # JD 分析
 │   │   ├── workflow.py          # 主流程
 │   │   ├── utils.py             # 工具函数
-│   │   └── mcp/                 # 🆕 MCP架构 (v2.2新增)
+│   │   └── mcp/                 # 🆕 MCP架构 (v2.2新增, v2.3增强)
 │   │       ├── server.py        # 工具服务器
 │   │       ├── client.py        # 客户端通信
-│   │       └── agent.py         # LLM智能Agent
+│   │       ├── agent.py         # LLM智能Agent
+│   │       ├── recorder.py      # 🆕 监控与回放系统 (v2.3)
+│   │       └── server_mcp.py   # 🆕 MCP协议标准化 (预备)
 │   ├── extractor/           # PDF 提取
 │   │   └── extractor.py
 │   └── llm/                 # LLM 提供商
@@ -837,16 +847,79 @@ RESUME_SKILL/
 │   ├── sample_profile.yaml
 │   └── sample_profile_template.md
 │
+├── outputs/                 # 🆕 输出目录 (v2.3新增)
+│   ├── mcp_agent/          # Agent执行报告和Checkpoint
+│   │   ├── *_agent_report.json  # 🆕 决策链报告
+│   │   └── checkpoint_*.json     # 🆕 断点恢复文件
+│   └── logs/               # 系统日志
+│
 ├── pyproject.toml           # Python 包配置
 ├── .env.example             # API 配置模板
 ├── README.md                # 本文件
-├── BUGFIX_REPORT.md         # 🆕 v2.2 Bug修复报告
+├── BUGFIX_REPORT.md         # 🆕 v2.2 Bug修复报告 (已修复)
 ├── MCP_REFACTOR_REPORT.md   # 🆕 MCP架构重构报告
 ├── config.yaml              # 项目配置
 ├── pytest.ini               # 测试配置
 ├── requirements.txt         # 依赖列表
 └── LICENSE                  # MIT 许可证
 ```
+
+## 🆕 v2.3 最新功能更新
+
+<div align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Star.png" alt="Star" width="60" height="60" />
+</div>
+
+### 🎉 三大新方向功能上线！
+
+#### 🧠 方向D - 智能监控与回放系统
+**🎯 功能亮点：**
+- ✅ **AgentRecorder类** - 完整记录Agent决策链和执行历史
+- ✅ **JSON格式报告** - 结构化存储，支持分析和复盘
+- ✅ **决策链可视化** - 清晰展示每个步骤的工具调用和参数
+- ✅ **执行状态追踪** - 记录填充成功/失败统计
+- ✅ **LLM推理记录** - 保存每次决策的推理过程（reason字段）
+
+**📊 输出示例：**
+```json
+{
+  "step": 1,
+  "phase": "agent", 
+  "tool": "extract_fields",
+  "params": {},
+  "result": {"count": 15, "fields": [...]},
+  "state_before": "第1步状态",
+  "llm_reason": "需要提取当前页面的表单字段",
+  "timestamp": "2024-01-01T12:00:10"
+}
+```
+
+#### 💾 方向E - Session管理与Checkpoint恢复
+**🎯 功能亮点：**
+- ✅ **智能Checkpoint保存** - 每3步自动保存进度
+- ✅ **断点续传** - 支持从任意步骤恢复执行
+- ✅ **确定性步骤跳过** - 恢复时跳过已完成的browser_start等步骤
+- ✅ **完整状态序列化** - AgentState + 执行历史 + 确定性步骤列表
+- ✅ **CLI集成** - `--resume`参数支持，灵活控制恢复点
+
+**🚀 使用方式：**
+```bash
+# 从checkpoint恢复执行
+resume-skill apply --url "https://job.example.com/apply" --use-mcp --resume "outputs/mcp_agent/checkpoint_20240101_120000.json"
+```
+
+#### ⚙️ 方向B - MCP协议标准化 (未来路线图)
+**🎯 规划功能：**
+- 🔄 **官方MCP SDK集成** - 使用标准的mcp>=1.0 Python包
+- 🏗️ **异步架构重构** - 基于async/await的现代并发模型
+- 🎯 **更好的工具发现** - 支持动态工具注册和描述
+- 🔧 **简化错误处理** - 内置MCP协议错误代码和重试逻辑
+- 📚 **标准化文档** - 自动生成OpenAPI兼容的工具文档
+
+**⚠️ 当前状态：**
+- ✅ **代码准备就绪** - `server_mcp.py`已创建，等待环境升级
+- ❌ **环境限制** - 需要Python 3.10+，当前为Python 3.9.21
+- 🔄 **兼容性策略** - 保持现有JSON-RPC实现，为升级预留接口
 
 ---
 
@@ -1129,6 +1202,109 @@ RESUME_SKILL/
 
 ---
 
+## 🎮 新功能高级使用技巧
+
+<div align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Video%20Game.png" alt="Game" width="60" height="60" />
+</div>
+
+### 🔧 使用监控与回放系统调试
+
+**📊 查看Agent执行报告：**
+```bash
+# 1. 运行Agent（自动生成报告）
+resume-skill apply --url "招聘URL" --use-mcp
+
+# 2. 查看生成的报告文件
+#    位置: outputs/mcp_agent/*_agent_report.json
+
+# 3. 使用Python快速查看摘要
+python -c "
+import json
+with open('outputs/mcp_agent/latest_agent_report.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
+    
+print('总步数:', len(data))
+success = sum(1 for step in data if not step.get('error'))
+failed = sum(1 for step in data if step.get('error'))
+print('成功:', success, '失败:', failed)
+
+print('\\n工具调用统计:')
+tools = {}
+for step in data:
+    tool = step.get('tool', 'unknown')
+    tools[tool] = tools.get(tool, 0) + 1
+    
+for tool, count in sorted(tools.items(), key=lambda x: x[1], reverse=True):
+    print(f'  {tool}: {count}次')
+"
+```
+
+### 💾 使用Checkpoint进行批量处理
+
+**📁 批量投递工作流：**
+```bash
+#!/bin/bash
+# batch_apply.sh - 批量投递脚本
+
+URLS=(
+    "https://company1.com/jobs/123"
+    "https://company2.com/careers/456" 
+    "https://company3.com/apply/789"
+)
+
+for URL in \"${URLS[@]}\"; do
+    echo \"开始投递: $URL\"
+    
+    # 尝试正常投递
+    resume-skill apply --url \"$URL\" --use-mcp --auto-fill --non-interactive
+    
+    # 检查退出状态
+    if [ $? -ne 0 ]; then
+        echo \"⚠️  投递失败，检查checkpoint文件\"
+        
+        # 查找最新的checkpoint
+        CHECKPOINT=$(ls -t outputs/mcp_agent/checkpoint_*.json 2>/dev/null | head -1)
+        
+        if [ -n \"$CHECKPOINT\" ]; then
+            echo \"从checkpoint恢复: $CHECKPOINT\"
+            resume-skill apply --url \"$URL\" --use-mcp --resume \"$CHECKPOINT\"
+        fi
+    fi
+    
+    echo \"完成: $URL\"
+    echo \"---\"
+done
+```
+
+**🔄 Checkpoint管理命令：**
+```bash
+# 列出所有checkpoint文件（按时间排序）
+ls -lt outputs/mcp_agent/checkpoint_*.json
+
+# 查看checkpoint内容
+python -c "import json; data=json.load(open('outputs/mcp_agent/checkpoint_latest.json')); print(json.dumps(data['state'], indent=2, ensure_ascii=False))"
+
+# 清理旧的checkpoint文件（保留最近10个）
+ls -t outputs/mcp_agent/checkpoint_*.json | tail -n +11 | xargs rm -f
+```
+
+### 🤖 高级Agent配置
+
+**⚙️ MCP Agent新参数：**
+```bash
+# 使用新的监控和恢复功能
+resume-skill apply --url "URL" --use-mcp
+
+# 从checkpoint恢复执行（新增功能）
+resume-skill apply --url "URL" --use-mcp --resume "checkpoint_file.json"
+
+# 查看Agent执行报告（新增功能）
+# 报告自动保存到: outputs/mcp_agent/*_agent_report.json
+```
+
+---
+
 ## 💻 快速命令参考
 
 <div align="center">
@@ -1176,6 +1352,16 @@ RESUME_SKILL/
 <td><span style="background-color: #FF6B6B; color: white; padding: 2px 6px; border-radius: 3px;">~15s</span></td>
 </tr>
 <tr>
+<td><b>🤖 MCP智能Agent</b></td>
+<td><code>resume-skill apply --url "URL" --use-mcp</code></td>
+<td><span style="background-color: #4ECDC4; color: white; padding: 2px 6px; border-radius: 3px;">~1min</span></td>
+</tr>
+<tr>
+<td><b>💾 Checkpoint恢复</b></td>
+<td><code>resume-skill apply --url "URL" --use-mcp --resume "checkpoint.json"</code></td>
+<td><span style="background-color: #FF9800; color: white; padding: 2px 6px; border-radius: 3px;">~30s</span></td>
+</tr>
+<tr>
 <td><b>🔍 健康检查</b></td>
 <td><code>resume-skill doctor</code></td>
 <td><span style="background-color: #9C27B0; color: white; padding: 2px 6px; border-radius: 3px;">~3s</span></td>
@@ -1197,7 +1383,7 @@ RESUME_SKILL/
 <div align="center">
 <table>
 <tr>
-<td width="50%">
+<td width="33%">
 
 **🚀 首次使用完整流程**
 ```bash
@@ -1215,7 +1401,7 @@ resume-skill apply --url "招聘URL"
 ```
 
 </td>
-<td width="50%">
+<td width="33%">
 
 **⚡ 批量投递流水线**
 ```bash
@@ -1228,6 +1414,28 @@ done
 # 或使用极速模式 (谨慎)
 resume-skill apply --url "URL" \
   --auto-fill --auto-submit --non-interactive
+```
+
+</td>
+<td width="34%">
+
+**🤖 MCP高级工作流**
+```bash
+# 1. 智能Agent投递
+resume-skill apply --url "URL" --use-mcp
+
+# 2. 查看Agent报告
+#    查看: outputs/mcp_agent/*_agent_report.json
+
+# 3. 从Checkpoint恢复
+resume-skill apply --url "URL" \
+  --use-mcp --resume "checkpoint.json"
+
+# 4. 批量MCP投递
+for url in URL1 URL2 URL3; do
+  resume-skill apply --url "$url" \
+    --use-mcp --auto-fill --non-interactive
+done
 ```
 
 </td>
@@ -1428,6 +1636,6 @@ API 密钥 .env 文件保护<br/>
 ---
 
 <p><i>⚡ RESUME_SKILL - 让每一次求职投递都精准高效！</i></p>
-<p><i>🎯 Version v2.2</i></p>
+<p><i>🎯 Version v2.3 - 智能增强版</i></p>
 
 </div>

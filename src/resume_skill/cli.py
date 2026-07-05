@@ -94,7 +94,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     if args.use_mcp:
         from .agent.mcp.agent import run_agent
-        run_agent(url)
+        run_agent(url, resume_from=args.resume)
         return 0
 
     from .agent.workflow import run_apply_flow, RunOptions

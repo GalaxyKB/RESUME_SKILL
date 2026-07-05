@@ -17,6 +17,7 @@ from ..llm.base import BaseLLMClient
 from ..config import CONFIG
 from .mcp.client import MCPClient
 from .utils import load_yaml, print_section, console
+from .recorder import AgentRecorder
 
 
 @dataclass
@@ -87,10 +88,12 @@ def _build_tool_descriptions() -> str:
 
 
 class MCPAgent:
-    def __init__(self, llm_client: BaseLLMClient | None = None):
+    def __init__(self, llm_client: BaseLLMClient | None = None, resume_from: str = ""):
         self.client = MCPClient()
         self.llm = llm_client or create_llm_client()
         self.profile: dict[str, Any] = {}
+        self.recorder = AgentRecorder()
+        self._resume_from = resume_from
 
     def _load_profile(self) -> dict[str, Any]:
         profile_path = CONFIG.unified_profile_path
@@ -99,8 +102,9 @@ class MCPAgent:
         print(f"Profile not found at {profile_path}")
         return {}
 
-    def run(self, url: str) -> None:
+    def run(self, url: str, resume_from: str = "") -> None:
         print_section("MCP Agent - 智能填充流程")
+        self._url = url
         self.profile = self._load_profile()
         if not self.profile:
             console.print("[red]❌ 未找到用户档案，请先运行 resume-skill consolidate[/]")
@@ -108,21 +112,65 @@ class MCPAgent:
 
         tool_desc = _build_tool_descriptions()
         self.client.connect()
-        state = AgentState()
-        history: list[str] = []
+        
+        # 恢复 checkpoint 或初始化
+        if resume_from:
+            # 恢复 checkpoint
+            checkpoint = self._load_checkpoint(resume_from)
+            state = AgentState(**checkpoint["state"])
+            history = checkpoint.get("history", [])
+            deterministic_done = checkpoint.get("deterministic_done", [])
+            console.print(f"[yellow]从 checkpoint 恢复: 已完成 {len(deterministic_done)} 个确定性步骤[/]")
+        else:
+            state = AgentState()
+            history = []
+            deterministic_done = []
 
         # Initial deterministic steps (no LLM needed)
-        print("[Step 0] 启动浏览器...")
-        self.client.call_tool("browser_start", {"session_dir": str(CONFIG.session_dir)})
-        history.append("browser_start: 启动浏览器")
+        # 第一步：browser_start
+        if "browser_start" not in deterministic_done:
+            print("[Step 0] 启动浏览器...")
+            browser_start_result = self.client.call_tool("browser_start", {"session_dir": str(CONFIG.session_dir)})
+            self.recorder.record(step=0, phase="deterministic", tool="browser_start",
+                                params={"session_dir": str(CONFIG.session_dir)},
+                                result=browser_start_result, state_before="",
+                                llm_reason="")
+            history.append("browser_start: 启动浏览器")
+            deterministic_done.append("browser_start")
+            ckpt_path = self._save_checkpoint(state, history, deterministic_done)
+            print(f"  Checkpoint 已保存: {ckpt_path}")
+        else:
+            print("[Step 0] 跳过 browser_start（已从 checkpoint 恢复）")
         
-        print("[Step 1] 导航到目标页面...")
-        self.client.call_tool("browser_navigate", {"url": url})
-        history.append(f"browser_navigate: 导航到 {url}")
+        # 第二步：browser_navigate
+        if "browser_navigate" not in deterministic_done:
+            print("[Step 1] 导航到目标页面...")
+            browser_navigate_result = self.client.call_tool("browser_navigate", {"url": url})
+            self.recorder.record(step=1, phase="deterministic", tool="browser_navigate",
+                                params={"url": url},
+                                result=browser_navigate_result, state_before="",
+                                llm_reason="")
+            history.append(f"browser_navigate: 导航到 {url}")
+            deterministic_done.append("browser_navigate")
+            ckpt_path = self._save_checkpoint(state, history, deterministic_done)
+            print(f"  Checkpoint 已保存: {ckpt_path}")
+        else:
+            print("[Step 1] 跳过 browser_navigate（已从 checkpoint 恢复）")
         
-        print("[Step 2] 等待用户登录...")
-        self.client.call_tool("wait_for_user", {"message": "请在浏览器中完成登录后按 Enter 继续..."})
-        history.append("wait_for_user: 等待用户登录")
+        # 第三步：wait_for_user
+        if "wait_for_user" not in deterministic_done:
+            print("[Step 2] 等待用户登录...")
+            wait_result = self.client.call_tool("wait_for_user", {"message": "请在浏览器中完成登录后按 Enter 继续..."})
+            self.recorder.record(step=2, phase="deterministic", tool="wait_for_user",
+                                params={"message": "请在浏览器中完成登录后按 Enter 继续..."},
+                                result=wait_result, state_before="",
+                                llm_reason="")
+            history.append("wait_for_user: 等待用户登录")
+            deterministic_done.append("wait_for_user")
+            ckpt_path = self._save_checkpoint(state, history, deterministic_done)
+            print(f"  Checkpoint 已保存: {ckpt_path}")
+        else:
+            print("[Step 2] 跳过 wait_for_user（已从 checkpoint 恢复）")
 
         # Agent loop with state management
         while state.step < state.max_steps:
@@ -148,9 +196,17 @@ class MCPAgent:
             # Build user prompt with current state
             user_prompt = f"当前状态:\n{state.to_prompt()}\n\n请决定下一步操作。"
 
+            # 保存执行前的状态
+            state_before = state.to_prompt()
+
             # Call LLM
             response = self.llm.call_json(system_prompt, user_prompt)
             print(f"[LLM] {str(response)[:200]}...")
+
+            # 提取 reason
+            reason = ""
+            if isinstance(response, dict):
+                reason = response.get("reason", "")
 
             # Parse tool call
             tool_call = self._parse_tool_call(response)
@@ -172,7 +228,11 @@ class MCPAgent:
                 
             if tool_name == "wait_for_user":
                 print(f"[等待用户] {params.get('message', '请操作后继续...')}")
-                self.client.call_tool("wait_for_user", params)
+                wait_result = self.client.call_tool("wait_for_user", params)
+                # 记录等待用户步骤
+                self.recorder.record(step=state.step, phase="agent", tool=tool_name,
+                                    params=params, result=wait_result,
+                                    state_before=state_before, llm_reason=reason)
                 history.append(f"wait_for_user: {params.get('message', '等待用户操作')}")
                 continue
 
@@ -181,21 +241,43 @@ class MCPAgent:
                 result = self.client.call_tool(tool_name, params)
                 print(f"  → {tool_name} 返回: {json.dumps(result, ensure_ascii=False)[:200]}")
                 
+                # 记录成功的工具执行
+                self.recorder.record(step=state.step, phase="agent", tool=tool_name,
+                                    params=params, result=result,
+                                    state_before=state_before, llm_reason=reason)
+                
                 # Update state based on result
                 self._update_state(state, tool_name, params, result)
                 history.append(f"{tool_name}: {params} → {result.get('status', 'unknown')}")
                 state.consecutive_no_progress = 0  # Reset on success
                 
+                # 每 3 步保存一次 checkpoint
+                if state.step % 3 == 0:
+                    ckpt_path = self._save_checkpoint(state, history, deterministic_done)
+                    print(f"  Checkpoint 已保存: {ckpt_path}")
+                
             except Exception as e:
                 print(f"  → {tool_name} 失败: {e}")
                 state.last_error = str(e)
                 state.consecutive_no_progress += 1
+                # 记录失败的工具执行
+                self.recorder.record(step=state.step, phase="agent", tool=tool_name,
+                                    params=params, result={},
+                                    state_before=state_before, llm_reason=reason, error=str(e))
                 history.append(f"{tool_name}: {params} → 失败: {e}")
                 
                 # Check for no progress
                 if state.consecutive_no_progress >= 5:
                     console.print("[red]连续5步无进展，终止[/]")
                     break
+
+        # 保存 agent 报告
+        from ..utils import timestamp
+        report_dir = CONFIG.outputs_dir / "mcp_agent"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = self.recorder.save(report_dir / f"{timestamp()}_agent_report.json")
+        print(f"Agent 报告已保存: {report_path}")
+        print(self.recorder.summary())
 
         self.client.close()
         console.print("[green]✅ 填充流程完成[/]")
@@ -237,6 +319,43 @@ class MCPAgent:
                 }
                 state.verified_fields.append(field_info)
 
+    def _save_checkpoint(self, state: AgentState, history: list[str],
+                        deterministic_done: list[str]) -> Path:
+        """保存当前进度到 checkpoint 文件。"""
+        from ..utils import timestamp
+        
+        data = {
+            "version": 1,
+            "url": self._url,
+            "session_dir": str(CONFIG.session_dir),
+            "deterministic_done": deterministic_done,
+            "state": {
+                "step": state.step,
+                "page_url": state.page_url,
+                "field_count": state.field_count,
+                "filled_fields": state.filled_fields,
+                "failed_fields": state.failed_fields,
+                "verified_fields": state.verified_fields,
+                "last_error": state.last_error,
+            },
+            "history": history[-50:],   # 保留最近 50 条
+        }
+        
+        checkpoint_dir = CONFIG.outputs_dir / "mcp_agent"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        path = checkpoint_dir / f"checkpoint_{timestamp()}.json"
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        return path
+
+    @staticmethod
+    def _load_checkpoint(path: str) -> dict:
+        """加载 checkpoint 文件。"""
+        from pathlib import Path
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Checkpoint 不存在: {path}")
+        return json.loads(path.read_text(encoding="utf-8"))
+
     def _parse_tool_call(self, response):
         """Parse tool call from LLM response (handles both dict and str)."""
         if isinstance(response, dict):
@@ -249,7 +368,7 @@ class MCPAgent:
             return None
 
 
-def run_agent(url: str) -> None:
+def run_agent(url: str, resume_from: str = "") -> None:
     llm = create_llm_client()
-    agent = MCPAgent(llm_client=llm)
-    agent.run(url)
+    agent = MCPAgent(llm_client=llm, resume_from=resume_from)
+    agent.run(url, resume_from=resume_from)
