@@ -95,7 +95,7 @@ def analyze_and_tailor(
 def _fallback_analysis(raw_page_text: str, profile: dict[str, Any]) -> dict[str, Any]:
     text = normalize_whitespace(raw_page_text)
     personal = profile.get("personal", {})
-    intro = to_plain_text(personal.get("profile_summary", "")) or clip_text(text, 280)
+    intro = to_plain_text(personal.get("self_introduction", {}).get("medium", "")) or clip_text(text, 280)
     skills_data = profile.get("skills", {})
     skills_list = []
     if isinstance(skills_data, dict):

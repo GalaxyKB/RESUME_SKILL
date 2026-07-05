@@ -168,21 +168,9 @@ def _resolve_frame(page: Page, frame_url: str) -> Any:
         if base_url in frame.url:
             return frame
     
-    # Strategy 3: Match by frame name
-    # Extract frame info from extraction phase
-    frame_name = None
-    frame_title = None
-    try:
-        # Try to extract frame name/title from the original extraction
-        # This would need to be stored during extraction phase
-        pass
-    except Exception:
-        pass
-    
-    if frame_name:
-        for frame in page.frames:
-            if frame.name == frame_name:
-                return frame
+    # Strategy 3: Match by frame name (future enhancement)
+    # Note: Frame name/title would need to be stored during field extraction
+    # for this to work properly
     
     # Strategy 4: Match by domain
     try:
@@ -781,9 +769,34 @@ def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
             # Additional check: ensure the field hasn't been filled with wrong content
             # If actual value is very different from expected (e.g., different field entirely)
             if len(actual) > 10 and len(expected_value) > 10:
-                # Calculate simple similarity
-                common_chars = set(actual.lower()) & set(expected_value.lower())
-                similarity = len(common_chars) / max(len(set(actual.lower())), len(set(expected_value.lower())))
+                # Calculate improved similarity using Levenshtein-like approach
+                def calculate_similarity(s1: str, s2: str) -> float:
+                    """Calculate text similarity using multiple metrics."""
+                    s1, s2 = s1.lower().strip(), s2.lower().strip()
+                    if not s1 or not s2:
+                        return 0.0
+                    if s1 == s2:
+                        return 1.0
+                    
+                    # Check if one is contained in the other
+                    if s1 in s2 or s2 in s1:
+                        return 0.8
+                    
+                    # Character overlap similarity
+                    chars1, chars2 = set(s1), set(s2)
+                    char_overlap = len(chars1 & chars2) / len(chars1 | chars2)
+                    
+                    # Word overlap similarity (for longer texts)
+                    if len(s1) > 5 and len(s2) > 5:
+                        words1 = set(s1.split())
+                        words2 = set(s2.split())
+                        if words1 and words2:
+                            word_overlap = len(words1 & words2) / len(words1 | words2)
+                            return max(char_overlap, word_overlap)
+                    
+                    return char_overlap
+                
+                similarity = calculate_similarity(actual, expected_value)
                 if similarity < 0.3:
                     print(f"  ⚠️ Text verification failed: low similarity. Expected '{expected_value}', got '{actual}'")
                     return False
@@ -799,9 +812,10 @@ def _verify_fill(page: Page, item: dict[str, Any], expected_value: str) -> bool:
 
 def _take_screenshot(page: Page) -> str:
     """Take a screenshot after filling."""
+    from ..config import CONFIG
     from .utils import ensure_dirs
     ensure_dirs()
-    screenshot_dir = Path(".") / "outputs" / "screenshots"
+    screenshot_dir = CONFIG.outputs_dir / "screenshots"
     screenshot_dir.mkdir(parents=True, exist_ok=True)
     path = screenshot_dir / f"{timestamp()}_after_fill.png"
     try:

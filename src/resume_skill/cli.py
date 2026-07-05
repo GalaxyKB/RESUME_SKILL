@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 # Version info
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 
 def _json_output(data: dict[str, Any]) -> None:
@@ -138,7 +138,6 @@ def cmd_setup(args: argparse.Namespace) -> int:
     from .config import CONFIG
 
     personal_dir = CONFIG.personal_info_dir
-    (personal_dir / "resume").mkdir(parents=True, exist_ok=True)
     (personal_dir / "formal_resume").mkdir(parents=True, exist_ok=True)
     (personal_dir / "general_information").mkdir(parents=True, exist_ok=True)
 

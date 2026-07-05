@@ -243,7 +243,7 @@ def run_apply_flow(url: str, options: RunOptions | None = None) -> int:
         # JD Analysis (skip in form_only mode)
         if run_options.form_only:
             personal = profile.get("personal", {}) if isinstance(profile, dict) else {}
-            intro = to_plain_text(personal.get("profile_summary", "")) or clip_text(normalize_whitespace(raw_page_text), 280)
+            intro = to_plain_text(personal.get("self_introduction", {}).get("medium", "")) or clip_text(normalize_whitespace(raw_page_text), 280)
             jd_analysis = {
                 "company": "",
                 "position": "Form-only mode",
@@ -389,35 +389,6 @@ def run_apply_flow(url: str, options: RunOptions | None = None) -> int:
             "jd_analysis_path": str(jd_analysis_path),
         })
         browser.close()
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Resume Skill - Apply Agent")
-    subparsers = parser.add_subparsers(dest="command")
-
-    apply_parser = subparsers.add_parser("apply", help="Run the apply flow")
-    apply_parser.add_argument("--url", default="", help="Job page URL")
-    apply_parser.add_argument("--non-interactive", action="store_true")
-    apply_parser.add_argument("--continue-after-analysis", action="store_true")
-    apply_parser.add_argument("--auto-fill", action="store_true")
-    apply_parser.add_argument("--auto-submit", action="store_true")
-    apply_parser.add_argument("--skip-login-wait", action="store_true")
-    apply_parser.add_argument("--session-dir", default="")
-    apply_parser.add_argument("--cdp-endpoint", default="")
-    apply_parser.add_argument("--reuse-existing-tab", action="store_true")
-    apply_parser.add_argument("--use-current-page", action="store_true")
-    apply_parser.add_argument("--keep-browser-open", action="store_true")
-    apply_parser.add_argument("--browser-channel", default="")
-    apply_parser.add_argument("--browser-executable-path", default="")
-    apply_parser.add_argument("--manual-login-first", action="store_true")
-    apply_parser.add_argument("--form-only", action="store_true")
-    apply_parser.add_argument("--login-only", action="store_true")
-    apply_parser.add_argument("--fill-only", action="store_true")
-    apply_parser.add_argument("--headless", action="store_true")
-    apply_parser.add_argument("--max-fill-rounds", type=int, default=3)
-
-    subparsers.add_parser("doctor", help="Check LLM connectivity")
-    return parser
 
 
 def run_doctor() -> int:

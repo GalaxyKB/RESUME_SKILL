@@ -105,34 +105,35 @@ class AppConfig:
     storage: StorageConfig = field(default_factory=StorageConfig)
     debug_mode: bool = False
     log_level: str = "INFO"
+    _project_root: Path = field(default_factory=_get_project_root)
 
     @property
     def project_root(self) -> Path:
-        return PROJECT_ROOT
+        return self._project_root
 
     @property
     def personal_info_dir(self) -> Path:
         if self.storage.profile_dir:
             return Path(self.storage.profile_dir)
-        return PROJECT_ROOT / "personal_info"
+        return self._project_root / "personal_info"
 
     @property
     def outputs_dir(self) -> Path:
         if self.storage.outputs_dir:
             return Path(self.storage.outputs_dir)
-        return PROJECT_ROOT / "outputs"
+        return self._project_root / "outputs"
 
     @property
     def records_dir(self) -> Path:
         if self.storage.records_dir:
             return Path(self.storage.records_dir)
-        return PROJECT_ROOT / "records"
+        return self._project_root / "records"
 
     @property
     def session_dir(self) -> Path:
         if self.storage.session_dir:
             return Path(self.storage.session_dir)
-        return PROJECT_ROOT / ".session" / "chrome"
+        return self._project_root / ".session" / "chrome"
 
     @property
     def unified_profile_path(self) -> Path:
@@ -144,12 +145,8 @@ class AppConfig:
 
 
 def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
-    # Update global PROJECT_ROOT if project_dir is provided
-    global PROJECT_ROOT
-    if project_dir:
-        PROJECT_ROOT = project_dir
-    
-    root = project_dir or PROJECT_ROOT
+    # Use local project root instead of modifying global
+    root = project_dir or _get_project_root()
 
     env_path = root / ".env"
     if env_path.exists():
@@ -176,14 +173,26 @@ def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
     browser_cfg = BrowserConfig(
         headless=_env_bool("BROWSER_HEADLESS", browser_yaml.get("headless", False)),
         slow_motion=int(_env("BROWSER_SLOW_MOTION", str(browser_yaml.get("slow_motion", 300)))),
+        launch_timeout=browser_yaml.get("launch_timeout", 30000),
+        navigation_timeout=browser_yaml.get("navigation_timeout", 60000),
         browser_channel=_env("BROWSER_CHANNEL", browser_yaml.get("channel", "chrome")),
         browser_executable_path=_env("BROWSER_EXECUTABLE_PATH", browser_yaml.get("executable_path", "")),
+        locale=browser_yaml.get("locale", "zh-CN"),
+        timezone_id=browser_yaml.get("timezone_id", "Asia/Shanghai"),
+        viewport_width=browser_yaml.get("viewport", {}).get("width", 1920),
+        viewport_height=browser_yaml.get("viewport", {}).get("height", 1080),
     )
 
     fill_yaml = yaml_data.get("form_filling", {})
     form_cfg = FormFillingConfig(
         auto_fill=fill_yaml.get("auto_fill", True),
         require_confirmation=fill_yaml.get("require_confirmation_before_fill", True),
+        max_extraction_retries=fill_yaml.get("max_extraction_retries", 8),
+        extraction_retry_delay=fill_yaml.get("extraction_retry_delay", 1200),
+        fill_operation_timeout=fill_yaml.get("fill_operation_timeout", 30000),
+        inter_field_delay=fill_yaml.get("inter_field_delay", 100),
+        auto_submit=fill_yaml.get("auto_submit", False),
+        submit_wait_time=fill_yaml.get("submit_wait_time", 2000),
         max_fill_rounds=fill_yaml.get("max_fill_rounds", 5),
     )
 
@@ -202,6 +211,7 @@ def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
         storage=storage_cfg,
         debug_mode=_env_bool("DEBUG_MODE", yaml_data.get("advanced", {}).get("debug_mode", False)),
         log_level=_env("LOG_LEVEL", yaml_data.get("logging", {}).get("level", "INFO")),
+        _project_root=root,  # Pass the root to AppConfig
     )
 
 

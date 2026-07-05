@@ -113,25 +113,6 @@ RULE_BASED_SCRIPT = r'''
     }
   }
 
-  // Also collect visible labels that aren't associated with inputs (may be for custom components)
-  const labelElements = document.querySelectorAll('label, .form-label, .ant-form-item-label, .el-form-item__label, .arco-form-item-label');
-  for (const labelEl of labelElements) {
-    if (seenElements.has(labelEl)) continue;
-    const text = (labelEl.textContent || '').trim();
-    if (!text || text.length > 100) continue;
-
-    // Check if this label's for-attribute points to an already-collected field
-    const forAttr = labelEl.getAttribute('for');
-    if (forAttr) {
-      const target = document.getElementById(forAttr);
-      if (target && seenElements.has(target)) continue;
-    }
-
-    // Check if it contains an already-collected input
-    const containedInput = labelEl.querySelector('input, textarea, select');
-    if (containedInput && seenElements.has(containedInput)) continue;
-  }
-
   function extractFieldContext(el) {
     let label = '';
     let placeholder = el.placeholder || el.getAttribute('placeholder') || '';

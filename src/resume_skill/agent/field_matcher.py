@@ -52,7 +52,7 @@ FIELD_RULES_FALLBACK = [
     ("major", ["专业", "major", "所学专业", "专业方向"], "education.0.major", 0.98),
     ("degree", ["学历", "学位", "degree", "最高学历"], "education.0.degree", 0.98),
     ("gpa", ["gpa", "绩点", "平均分", "加权"], "education.0.gpa", 0.98),
-    ("graduation_date", ["毕业时间", "毕业日期", "graduation"], "education.0.graduation_date", 0.95),
+    ("graduation_date", ["毕业时间", "毕业日期", "graduation"], "education.0.end_date", 0.95),
     
     # 其他
     ("location", ["居住", "所在城市", "现居", "location", "城市"], "personal.location", 0.92),
@@ -338,68 +338,6 @@ def _prepare_fields_for_prompt(fields: list[dict[str, Any]]) -> str:
         }
         lines.append(f"[{i}] {json.dumps(info, ensure_ascii=False)}")
     return "\n".join(lines)
-
-
-def _apply_llm_matches(
-    fields: list[dict[str, Any]],
-    llm_result: dict[str, Any],
-) -> list[dict[str, Any]]:
-    matches = {m["field_index"]: m for m in llm_result.get("matches", []) if isinstance(m, dict)}
-    no_matches = {nm["field_index"]: nm for nm in llm_result.get("no_matches", []) if isinstance(nm, dict)}
-
-    fill_plan = []
-    for i, field in enumerate(fields):
-        tag = str(field.get("tag", "")).lower()
-        field_type = str(field.get("type", "")).lower()
-
-        if i in matches:
-            m = matches[i]
-            value = str(m.get("matched_value", ""))
-            confidence = float(m.get("confidence", 0.0))
-            fill_strategy = str(m.get("fill_strategy", _infer_fill_strategy(field)))
-            action = str(m.get("action", "auto_fill" if confidence >= 0.7 else "review"))
-
-            field_text = _compose_field_text(field)
-            if _is_sensitive(field_text):
-                action = "manual"
-
-            fill_plan.append({
-                "field_id": field.get("field_id", ""),
-                "selector": field.get("selector", ""),
-                "xpath": field.get("xpath", ""),
-                "frame_url": field.get("frame_url", ""),
-                "field_label": field.get("field_label", field.get("label", "")),
-                "field_type": f"{tag}/{field_type}".strip("/") if field_type else tag,
-                "role": field.get("role", ""),
-                "fill_strategy": fill_strategy,
-                "value": value,
-                "source": str(m.get("source_path", "")),
-                "confidence": round(confidence, 2),
-                "action": action,
-                "reason": str(m.get("reason", "")),
-                "options": field.get("options", []),
-            })
-        else:
-            fill_strategy = _infer_fill_strategy(field)
-            reason = no_matches.get(i, {}).get("reason", "No match") if i in no_matches else "Not matched by AI"
-            fill_plan.append({
-                "field_id": field.get("field_id", ""),
-                "selector": field.get("selector", ""),
-                "xpath": field.get("xpath", ""),
-                "frame_url": field.get("frame_url", ""),
-                "field_label": field.get("field_label", field.get("label", "")),
-                "field_type": f"{tag}/{field_type}".strip("/") if field_type else tag,
-                "role": field.get("role", ""),
-                "fill_strategy": fill_strategy,
-                "value": "",
-                "source": "",
-                "confidence": 0.0,
-                "action": "manual",
-                "reason": reason,
-                "options": field.get("options", []),
-            })
-
-    return fill_plan
 
 
 def _compose_field_text(field: dict[str, Any]) -> str:
