@@ -89,7 +89,13 @@ def _build_tool_descriptions() -> str:
 
 class MCPAgent:
     def __init__(self, llm_client: BaseLLMClient | None = None, resume_from: str = ""):
-        self.client = MCPClient()
+        from ..config import CONFIG
+        # 如果配置了 MCP_PYTHON_PATH，则自动使用 MCP SDK 模式
+        use_sdk = bool(CONFIG.mcp.python_path)
+        self.client = MCPClient(
+            use_mcp_sdk=use_sdk,
+            mcp_python_path=CONFIG.mcp.python_path
+        )
         self.llm = llm_client or create_llm_client()
         self.profile: dict[str, Any] = {}
         self.recorder = AgentRecorder()

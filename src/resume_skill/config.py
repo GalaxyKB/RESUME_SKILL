@@ -98,8 +98,14 @@ class StorageConfig:
 
 
 @dataclass
+class MCPConfig:
+    python_path: str = ""  # conda 环境的 Python 路径，空则用 sys.executable
+
+
+@dataclass
 class AppConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
+    mcp: MCPConfig = field(default_factory=MCPConfig)  # 新增
     browser: BrowserConfig = field(default_factory=BrowserConfig)
     form_filling: FormFillingConfig = field(default_factory=FormFillingConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
@@ -204,8 +210,15 @@ def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
         session_dir=storage_yaml.get("session_dir", ""),
     )
 
+    # MCP 配置加载
+    mcp_yaml = yaml_data.get("mcp", {})
+    mcp_cfg = MCPConfig(
+        python_path=_env("MCP_PYTHON_PATH", mcp_yaml.get("python_path", "")),
+    )
+
     return AppConfig(
         llm=llm_cfg,
+        mcp=mcp_cfg,  # 新增
         browser=browser_cfg,
         form_filling=form_cfg,
         storage=storage_cfg,

@@ -10,6 +10,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -19,18 +20,30 @@ from typing import Any
 
 
 class MCPClient:
-    def __init__(self, server_script: str | None = None):
+    def __init__(self, use_mcp_sdk: bool = False, mcp_python_path: str = ""):
         self._process: subprocess.Popen | None = None
         self._next_id = 1
-        if server_script is None:
-            server_script = str(Path(__file__).parent / "server.py")
-        self._server_script = server_script
+        self._use_mcp_sdk = use_mcp_sdk
+        self._mcp_python_path = mcp_python_path
+        self._session = None  # MCP SDK session
+        self._read = None
+        self._write = None
+        self._stdio = None
 
     def connect(self) -> None:
         if self._process is not None:
             return
+        if self._use_mcp_sdk:
+            self._connect_mcp_sdk()
+        else:
+            self._connect_legacy()
+
+    def _connect_legacy(self) -> None:
+        """原有 JSON-RPC 子进程方式（不变）"""
+        server_script = str(Path(__file__).parent / "server.py")
+        python_exe = self._mcp_python_path or sys.executable
         self._process = subprocess.Popen(
-            [sys.executable, self._server_script],
+            [python_exe, server_script],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -40,8 +53,39 @@ class MCPClient:
         # Wait for server ready message on stderr
         time.sleep(0.5)
 
-    def _call_tool(self, name: str, params: dict[str, Any] | None = None) -> Any:
-        """Internal method to call tool without retry logic."""
+    def _connect_mcp_sdk(self) -> None:
+        """使用 MCP SDK 的 stdio_client 连接"""
+        try:
+            from mcp import ClientSession, StdioServerParameters
+            from mcp.client.stdio import stdio_client
+        except ImportError as e:
+            raise ImportError(
+                "MCP SDK not available. Install with: pip install mcp>=1.0"
+            ) from e
+
+        server_script = str(Path(__file__).parent / "server_mcp.py")
+        python_exe = self._mcp_python_path or sys.executable
+        self._server_params = StdioServerParameters(
+            command=python_exe,
+            args=[server_script],
+        )
+
+        async def _connect():
+            self._stdio = await stdio_client(self._server_params).__aenter__()
+            self._read, self._write = self._stdio
+            self._session = await ClientSession(self._read, self._write).__aenter__()
+            await self._session.initialize()
+
+        asyncio.run(_connect())
+
+    def call_tool(self, name: str, params: dict[str, Any] | None = None) -> Any:
+        if self._use_mcp_sdk:
+            return self._call_tool_mcp(name, params)
+        else:
+            return self._call_tool_with_retry(name, params)
+
+    def _call_tool_legacy(self, name: str, params: dict[str, Any] | None = None) -> Any:
+        """原有 JSON-RPC 调用方式（不变）"""
         if self._process is None:
             raise RuntimeError("Not connected. Call connect() first.")
 
@@ -75,25 +119,48 @@ class MCPClient:
 
         return response.get("result")
 
-    def call_tool(self, name: str, params: dict[str, Any] | None = None) -> Any:
-        """Call tool with automatic reconnect on server crash."""
+    def _call_tool_mcp(self, name: str, params: dict[str, Any] | None = None) -> Any:
+        """MCP SDK 方式调用"""
+        import json
+
+        async def _call():
+            result = await self._session.call_tool(name, params or {})
+            if result.content and len(result.content) > 0:
+                text = result.content[0].text
+                try:
+                    return json.loads(text)
+                except (json.JSONDecodeError, TypeError):
+                    return text
+            return {}
+
+        return asyncio.run(_call())
+
+    def _call_tool_with_retry(self, name: str, params: dict[str, Any] | None = None) -> Any:
+        """Legacy模式下的重试逻辑"""
         try:
-            return self._call_tool(name, params)
+            return self._call_tool_legacy(name, params)
         except (BrokenPipeError, ConnectionError, RuntimeError) as e:
             # Server crash detected, try to reconnect and retry once
             if "process ended unexpectedly" in str(e) or isinstance(e, (BrokenPipeError, ConnectionError)):
                 print(f"[MCP Client] Server crash detected, attempting reconnect...")
                 self.close()
                 self.connect()
-                return self._call_tool(name, params)
+                return self._call_tool_legacy(name, params)
             else:
                 # Re-raise other RuntimeError
                 raise e
 
     def close(self) -> None:
-        if self._process:
+        if self._use_mcp_sdk and self._session is not None:
+            async def _close():
+                await self._session.__aexit__(None, None, None)
+                await self._stdio.__aexit__(None, None, None)
+            asyncio.run(_close())
+            self._session = None
+            self._stdio = None
+        elif self._process:
             try:
-                self.call_tool("browser_close")
+                self._call_tool_legacy("browser_close")
             except Exception:
                 pass
             self._process.terminate()

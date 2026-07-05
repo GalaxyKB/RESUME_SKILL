@@ -214,3 +214,192 @@ RESUME_SKILL/
 *最后更新: 2024年1月*
 *版本: v2.3 智能增强版*
 *开发者: RESUME_SKILL团队*
+## ✅ 方向B - MCP协议标准化（已完成代码实现）
+
+### 🏗️ 按照8个步骤完成开发
+
+#### 第一步：Conda环境搭建（预备）
+- 🔄 环境创建遇到SSL证书问题
+- ✅ 代码实现不依赖环境，为后续部署做好准备
+
+#### 第二步：重写 server_mcp.py（已完成）
+**✅ 完整实现了11个工具函数：**
+1. `browser_start` - 启动浏览器工具
+2. `browser_navigate` - 导航到URL
+3. `browser_close` - 关闭浏览器
+4. `get_page_text` - 获取页面文本
+5. `extract_fields` - 提取表单字段
+6. `get_current_url` - 获取当前URL
+7. `match_fields` - 匹配字段与档案
+8. `fill_field` - 填充单个字段
+9. `verify_field` - 验证字段填充
+10. `find_and_click` - 查找并点击按钮
+11. `wait_for_user` - 等待用户操作
+
+**✅ 技术特点：**
+- 使用`@mcp.tool`装饰器注册所有工具
+- 支持timeout参数配置
+- 所有函数返回JSON字符串（FastMCP推荐）
+- 函数体与server.py完全一致，只改注册方式
+
+#### 第三步：修改 config.py（已完成）
+**✅ 新增配置类：**
+```python
+@dataclass
+class MCPConfig:
+    python_path: str = ""  # conda环境的Python路径
+```
+
+**✅ 集成到AppConfig：**
+- 在`AppConfig`中添加`mcp`字段
+- 在`load_app_config`中添加MCP配置加载逻辑
+- 支持从`.env`（`MCP_PYTHON_PATH`）或`config.yaml`加载配置
+
+#### 第四步：修改 client.py（已完成）
+**✅ 双模式支持：**
+- **Legacy模式**：原有JSON-RPC实现（向后兼容）
+- **MCP SDK模式**：使用官方MCP SDK通信
+
+**✅ 智能连接：**
+```python
+def __init__(self, use_mcp_sdk: bool = False, mcp_python_path: str = ""):
+    self._use_mcp_sdk = use_mcp_sdk
+    self._mcp_python_path = mcp_python_path
+```
+
+**✅ 异步支持：**
+- 使用`asyncio.run()`处理MCP SDK异步调用
+- 保持同步接口，内部处理异步细节
+
+#### 第五步：修改 agent.py（已完成）
+**✅ 自动模式选择：**
+```python
+# 如果配置了MCP_PYTHON_PATH，则自动使用MCP SDK模式
+use_sdk = bool(CONFIG.mcp.python_path)
+self.client = MCPClient(use_mcp_sdk=use_sdk, mcp_python_path=CONFIG.mcp.python_path)
+```
+
+#### 第六步：更新 __init__.py（已完成）
+**✅ 优雅的导入处理：**
+```python
+try:
+    from . import server_mcp
+    _mcp_sdk_available = True
+except ImportError:
+    _mcp_sdk_available = False
+```
+
+#### 第七步：配置conda Python路径（已完成）
+**✅ .env配置：**
+```env
+# MCP 配置
+# MCP_PYTHON_PATH=C:\Users\Lenovo\anaconda3\envs\resume-skill-mcp\python.exe
+```
+
+#### 第八步：验证流程（代码完成，待环境部署）
+**✅ 验证要点：**
+1. **向后兼容**：现有JSON-RPC模式不受影响
+2. **平滑升级**：配置MCP_PYTHON_PATH后自动切换到MCP SDK模式
+3. **环境隔离**：不同Python环境间完全隔离
+
+### 🎯 技术架构升级
+
+#### 通信协议对比
+| 特性 | Legacy JSON-RPC | MCP SDK |
+|:---|:---|:---|
+| **协议标准** | 自定义JSON-RPC | 官方MCP协议 |
+| **工具发现** | 静态定义 | 动态注册 |
+| **异步支持** | 同步 | 原生异步 |
+| **错误处理** | 自定义错误码 | 标准错误代码 |
+| **工具描述** | 手动维护 | 自动生成 |
+
+#### 文件改动汇总
+| 文件 | 改动 | 状态 |
+|:---|:---|:---|
+| `server_mcp.py` | 重写，11个工具FastMCP实现 | ✅ 完成 |
+| `config.py` | 新增`MCPConfig`，集成到配置系统 | ✅ 完成 |
+| `client.py` | 双模式支持，异步MCP SDK集成 | ✅ 完成 |
+| `agent.py` | 自动模式选择，读取MCP配置 | ✅ 完成 |
+| `__init__.py` | 优雅的MCP SDK可用性检查 | ✅ 完成 |
+| `.env` | 添加`MCP_PYTHON_PATH`配置项 | ✅ 完成 |
+
+### 🚀 部署与使用指南
+
+#### 快速启用MCP SDK模式
+1. **安装MCP SDK**：
+   ```bash
+   pip install mcp>=1.0
+   ```
+
+2. **配置Python路径**（在`.env`中）：
+   ```env
+   MCP_PYTHON_PATH=/path/to/your/python3.10+
+   ```
+
+3. **验证安装**：
+   ```bash
+   python -c "from mcp.server.fastmcp import FastMCP; print('MCP SDK OK')"
+   ```
+
+#### 使用示例
+**传统模式（默认）：**
+```bash
+resume-skill apply --url "https://example.com" --use-mcp
+```
+
+**MCP SDK模式（配置后自动启用）：**
+```bash
+# .env中配置了MCP_PYTHON_PATH
+resume-skill apply --url "https://example.com" --use-mcp
+# Agent自动使用MCP SDK模式
+```
+
+### 📊 优势与收益
+
+#### 技术优势
+1. **标准化**：使用官方MCP协议，提高兼容性
+2. **现代化**：基于async/await的现代并发模型
+3. **可维护性**：工具自动发现和文档生成
+4. **扩展性**：轻松添加新工具，支持动态注册
+
+#### 用户收益
+1. **零配置升级**：现有用户无需任何更改
+2. **平滑过渡**：配置MCP路径后自动升级
+3. **性能提升**：异步架构带来更好的响应性
+4. **更好的工具管理**：标准化工具描述和错误处理
+
+### 🔮 未来路线图
+
+#### 短期（v2.3.1）
+- [ ] 创建conda环境并完成MCP SDK安装
+- [ ] 完整的端到端测试验证
+- [ ] 性能对比和优化
+
+#### 中期（v2.4）
+- [ ] 更多的工具扩展
+- [ ] 工具版本管理和兼容性
+- [ ] 高级工具组合功能
+
+#### 长期（v3.0）
+- [ ] 完全基于MCP SDK的架构
+- [ ] 云原生部署支持
+- [ ] 多语言客户端支持
+
+### 🎉 总结
+
+**方向B - MCP协议标准化** 已经完成了**所有代码实现工作**：
+
+✅ **代码重构完成** - server_mcp.py完整重写，11个工具全部迁移  
+✅ **配置系统集成** - 新增MCPConfig，支持环境变量配置  
+✅ **双模式客户端** - 向后兼容JSON-RPC，向前支持MCP SDK  
+✅ **智能模式切换** - Agent自动根据配置选择通信模式  
+✅ **优雅的导入处理** - 处理MCP SDK可用性，避免导入错误  
+
+**部署要求：**
+- Python 3.10+环境（用于MCP SDK）
+- `pip install mcp>=1.0`
+- 配置`MCP_PYTHON_PATH`路径
+
+**当前状态：** 代码实现完成，待环境部署和完整测试验证。
+
+**版本里程碑：** v2.3智能增强版现在具备了完整的MCP协议标准化能力，为未来升级到官方MCP SDK铺平了道路。
