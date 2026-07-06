@@ -63,3 +63,80 @@ class OpenAIProvider(BaseLLMClient):
         except Exception as exc:
             self._append_log({**log_payload, "error": str(exc)})
             raise
+
+    @property
+    def supports_function_calling(self) -> bool:
+        return True
+
+    def call_with_tools(self,
+                        system_prompt: str,
+                        user_prompt: str,
+                        tools: list[dict]) -> list[dict] | str:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": user_prompt})
+
+        # 转换为 OpenAI tools 格式
+        openai_tools = []
+        for t in tools:
+            openai_tools.append({
+                "type": "function",
+                "function": {
+                    "name": t["name"],
+                    "description": t.get("description", ""),
+                    "parameters": t.get("inputSchema", {}),
+                }
+            })
+
+        request_body = {
+            "model": self.model,
+            "messages": messages,
+            "tools": openai_tools,
+            "tool_choice": "auto",
+            "temperature": 0.3,
+            "stream": False,
+        }
+
+        log_payload = {
+            "timestamp": datetime.now().isoformat(),
+            "provider": "openai",
+            "model": self.model,
+            "tool_count": len(tools),
+            "user_prompt": user_prompt[:200],
+        }
+
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            url = f"{self.base_url}/chat/completions"
+
+            with httpx.Client(timeout=120.0) as client:
+                response = client.post(url, headers=headers, json=request_body)
+                response.raise_for_status()
+                data = response.json()
+
+            msg = data.get("choices", [{}])[0].get("message", {})
+
+            # 检查是否有 tool_calls
+            tool_calls = msg.get("tool_calls")
+            if tool_calls:
+                result = []
+                for tc in tool_calls:
+                    result.append({
+                        "name": tc["function"]["name"],
+                        "arguments": json.loads(tc["function"]["arguments"]),
+                    })
+                self._append_log({**log_payload, "tool_calls": [r["name"] for r in result]})
+                return result
+
+            # 直接回复文本
+            content = msg.get("content", "")
+            self._append_log({**log_payload, "response_text": content[:500]})
+            return content
+
+        except Exception as exc:
+            self._append_log({**log_payload, "error": str(exc)})
+            raise

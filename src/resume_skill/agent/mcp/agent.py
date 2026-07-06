@@ -12,11 +12,11 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..llm.factory import create_llm_client
-from ..llm.base import BaseLLMClient
-from ..config import CONFIG
-from .mcp.client import MCPClient
-from .utils import load_yaml, print_section, console
+from ...llm.factory import create_llm_client
+from ...llm.base import BaseLLMClient
+from ...config import CONFIG
+from .client import MCPClient
+from ..utils import load_yaml, print_section, console
 from .recorder import AgentRecorder
 
 
@@ -74,7 +74,7 @@ SYSTEM_PROMPT = """你是一个网申表单自动填充 Agent。
 
 
 def _build_tool_descriptions() -> str:
-    from .mcp.server import TOOL_HELP
+    from .server import TOOL_HELP
     lines = []
     for name, info in TOOL_HELP.items():
         params_desc = []
@@ -89,7 +89,6 @@ def _build_tool_descriptions() -> str:
 
 class MCPAgent:
     def __init__(self, llm_client: BaseLLMClient | None = None, resume_from: str = ""):
-        from ..config import CONFIG
         # 如果配置了 MCP_PYTHON_PATH，则自动使用 MCP SDK 模式
         use_sdk = bool(CONFIG.mcp.python_path)
         self.client = MCPClient(
@@ -100,6 +99,37 @@ class MCPAgent:
         self.profile: dict[str, Any] = {}
         self.recorder = AgentRecorder()
         self._resume_from = resume_from
+
+    def _build_tools_for_api(self) -> list[dict]:
+        """将 TOOL_HELP 转换为 LLM API 兼容的 tools 格式。"""
+        from .server import TOOL_HELP
+        
+        tools = []
+        for name, info in TOOL_HELP.items():
+            params = info.get("params", {})
+            properties = {}
+            required = []
+            
+            for pname, pinfo in params.items():
+                ptype = pinfo.get("type", "string")
+                schema_type = "array" if ptype == "array" else "object" if ptype == "object" else "string"
+                properties[pname] = {
+                    "type": schema_type,
+                    "description": pinfo.get("description", ""),
+                }
+                if "default" not in pinfo:
+                    required.append(pname)
+            
+            tools.append({
+                "name": name,
+                "description": info.get("description", ""),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required,
+                },
+            })
+        return tools
 
     def _load_profile(self) -> dict[str, Any]:
         profile_path = CONFIG.unified_profile_path
@@ -206,16 +236,40 @@ class MCPAgent:
             state_before = state.to_prompt()
 
             # Call LLM
-            response = self.llm.call_json(system_prompt, user_prompt)
-            print(f"[LLM] {str(response)[:200]}...")
+            # 构建工具列表
+            tools = self._build_tools_for_api()
+            
+            if hasattr(self.llm, 'call_with_tools') and getattr(self.llm, 'supports_function_calling', False):
+                # 原生 function calling 模式
+                llm_result = self.llm.call_with_tools(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    tools=tools,
+                )
+                
+                if isinstance(llm_result, list):
+                    # LLM 返回了工具调用
+                    tool_name = llm_result[0]["name"]
+                    params = llm_result[0].get("arguments", {})
+                    reason = ""
+                    tool_call = (tool_name, params)
+                elif isinstance(llm_result, str):
+                    # LLM 直接回复文本
+                    print(f"[LLM] {llm_result[:200]}...")
+                    if "done" in llm_result.strip().lower():
+                        console.print("[green]✅ LLM判断任务完成[/]")
+                        break
+                    tool_call = None
+                else:
+                    tool_call = None
+            else:
+                # 回退：call_json + 解析
+                response = self.llm.call_json(system_prompt, user_prompt)
+                print(f"[LLM] {str(response)[:200]}...")
+                reason = response.get("reason", "") if isinstance(response, dict) else ""
+                tool_call = self._parse_tool_call(response)
 
-            # 提取 reason
-            reason = ""
-            if isinstance(response, dict):
-                reason = response.get("reason", "")
-
-            # Parse tool call
-            tool_call = self._parse_tool_call(response)
+            # 解析 tool call（与原逻辑一致）
             if tool_call is None:
                 console.print("[yellow]⚠️ LLM 返回格式无法解析[/]")
                 state.last_error = "JSON解析失败"

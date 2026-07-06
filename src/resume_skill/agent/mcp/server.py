@@ -30,32 +30,20 @@ _stdout_for_rpc = sys.stdout
 sys.stdout = sys.stderr
 
 def with_timeout(timeout_sec: int = 30):
-    """Timeout decorator for tool functions."""
+    """Timeout decorator for tool functions (shared thread pool)."""
+    # Shared thread pool for all timeouts
+    _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+    
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(func, *args, **kwargs)
-                try:
-                    return future.result(timeout=timeout_sec)
-                except concurrent.futures.TimeoutError:
-                    return {"status": "timeout", "error": f"操作超过 {timeout_sec} 秒"}
+            future = _thread_pool.submit(func, *args, **kwargs)
+            try:
+                return future.result(timeout=timeout_sec)
+            except concurrent.futures.TimeoutError:
+                return {"status": "timeout", "error": f"操作超过 {timeout_sec} 秒"}
         return wrapper
     return decorator
-
-# Ensure parent package is accessible
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
-
-from resume_skill.agent.browser_agent import BrowserAgent
-from resume_skill.agent.form_extractor import extract_fields_rule_based
-from resume_skill.agent.form_filler import _fill_single_field, _verify_fill, _resolve_locator
-from resume_skill.agent.utils import find_resume_pdf
-
-browser: BrowserAgent | None = None
-_resume_path: str = ""
-
-
 def _get_page():
     if browser is None:
         raise RuntimeError("Browser not started. Call browser_start first.")
@@ -178,6 +166,7 @@ def cmd_browser_close() -> dict:
 
 @with_timeout(10)
 def cmd_get_page_text() -> dict:
+    _get_page()  # ← 加这一行保护
     text = browser.get_page_text()
     return {"text": text, "length": len(text)}
 
@@ -228,12 +217,13 @@ def cmd_fill_field(
         else:
             # Try fallback
             from resume_skill.agent.form_filler import _fill_fallback
-            success = _fill_fallback(page, item, value, _resume_path)
+            fallback_success = _fill_fallback(page, item, value, _resume_path)
             return {
-                "status": "filled" if success else "failed",
+                "status": "filled" if fallback_success else "failed",
                 "field_id": field_id,
                 "field_label": field_label,
-                "fallback_used": not success,
+                "fallback_strategy": "fallback",   # ← 明确：主策略失败后走了 fallback
+                "fallback_success": fallback_success,       # ← 独立字段表示 fallback 是否成功
             }
     except Exception as e:
         return {"status": "error", "field_id": field_id, "error": str(e)}
@@ -306,6 +296,11 @@ def cmd_wait_for_user(message: str = "请完成操作后按 Enter 继续...") ->
     return {"status": "continue"}
 
 
+
+
+def cmd_help() -> dict:
+    """返回可用工具列表"""
+    return {"tools": {k: v["description"] for k, v in TOOL_HELP.items()}}
 TOOL_ROUTES = {
     "browser_start": cmd_browser_start,
     "browser_navigate": cmd_browser_navigate,
@@ -318,7 +313,7 @@ TOOL_ROUTES = {
     "verify_field": cmd_verify_field,
     "find_and_click": cmd_find_and_click,
     "wait_for_user": cmd_wait_for_user,
-    "help": lambda: {"tools": {k: v["description"] for k, v in TOOL_HELP.items()}},
+    "help": cmd_help,
 }
 
 
@@ -371,4 +366,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        # Restore original print and stdout
+        builtins.print = _print_original
+        sys.stdout = _stdout_for_rpc

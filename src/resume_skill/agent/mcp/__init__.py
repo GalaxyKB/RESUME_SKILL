@@ -10,4 +10,4 @@ try:
 except ImportError:
     _mcp_sdk_available = False
 
-__all__ = ["MCPClient", "TOOL_HELP"]
+__all__ = ["MCPClient", "TOOL_HELP", "_mcp_sdk_available"]

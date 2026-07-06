@@ -29,6 +29,7 @@ class MCPClient:
         self._read = None
         self._write = None
         self._stdio = None
+        self._loop: asyncio.AbstractEventLoop | None = None  # ← 新增：共享事件循环
 
     def connect(self) -> None:
         if self._process is not None:
@@ -63,20 +64,28 @@ class MCPClient:
                 "MCP SDK not available. Install with: pip install mcp>=1.0"
             ) from e
 
+        # 创建新的事件循环
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        
+        # 运行异步连接
+        self._loop.run_until_complete(self._async_connect())
+    
+    async def _async_connect(self):
+        """异步连接函数"""
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
+        
         server_script = str(Path(__file__).parent / "server_mcp.py")
         python_exe = self._mcp_python_path or sys.executable
-        self._server_params = StdioServerParameters(
+        server_params = StdioServerParameters(
             command=python_exe,
             args=[server_script],
         )
-
-        async def _connect():
-            self._stdio = await stdio_client(self._server_params).__aenter__()
-            self._read, self._write = self._stdio
-            self._session = await ClientSession(self._read, self._write).__aenter__()
-            await self._session.initialize()
-
-        asyncio.run(_connect())
+        
+        async with stdio_client(server_params) as (self._read, self._write):
+            async with ClientSession(self._read, self._write) as self._session:
+                await self._session.initialize()
 
     def call_tool(self, name: str, params: dict[str, Any] | None = None) -> Any:
         if self._use_mcp_sdk:
@@ -123,17 +132,17 @@ class MCPClient:
         """MCP SDK 方式调用"""
         import json
 
-        async def _call():
+        async def _async_call_impl():
             result = await self._session.call_tool(name, params or {})
             if result.content and len(result.content) > 0:
                 text = result.content[0].text
                 try:
                     return json.loads(text)
                 except (json.JSONDecodeError, TypeError):
-                    return text
+                    return {"raw_text": text}  # ← 总是返回 dict
             return {}
 
-        return asyncio.run(_call())
+        return self._loop.run_until_complete(_async_call_impl())
 
     def _call_tool_with_retry(self, name: str, params: dict[str, Any] | None = None) -> Any:
         """Legacy模式下的重试逻辑"""
@@ -151,13 +160,13 @@ class MCPClient:
                 raise e
 
     def close(self) -> None:
-        if self._use_mcp_sdk and self._session is not None:
-            async def _close():
-                await self._session.__aexit__(None, None, None)
-                await self._stdio.__aexit__(None, None, None)
-            asyncio.run(_close())
-            self._session = None
-            self._stdio = None
+        if self._use_mcp_sdk and self._session is not None and self._loop is not None:
+            async def _async_close():
+                # Session and stdio are closed automatically by async with
+                pass
+            self._loop.run_until_complete(_async_close())
+            self._loop.close()
+            self._loop = None
         elif self._process:
             try:
                 self._call_tool_legacy("browser_close")

@@ -93,3 +93,13 @@ class DeepSeekProvider(BaseLLMClient):
             return str(response_data)
         except Exception:
             return str(response_data)
+
+    def call_with_tools(self,
+                        system_prompt: str,
+                        user_prompt: str,
+                        tools: list[dict]) -> list[dict] | str:
+        """火山引擎 ARK 的 /responses API 不支持标准 function calling。
+        
+        使用父类的文本回退方案。
+        """
+        return self._call_with_tools_fallback(system_prompt, user_prompt, tools)

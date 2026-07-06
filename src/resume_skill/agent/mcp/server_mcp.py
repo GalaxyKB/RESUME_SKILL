@@ -77,6 +77,7 @@ def browser_close() -> str:
 @mcp.tool(timeout=10)
 def get_page_text() -> str:
     """提取当前页面的文本内容（用于 JD 分析）"""
+    _get_page()  # ← 加这一行保护
     text = browser.get_page_text()
     return json.dumps({"text": text, "length": len(text)}, ensure_ascii=False)
 
@@ -149,12 +150,13 @@ def fill_field(field_id: str = "",
         else:
             # Try fallback
             from resume_skill.agent.form_filler import _fill_fallback
-            success = _fill_fallback(page, item, value, _resume_path)
+            fallback_success = _fill_fallback(page, item, value, _resume_path)
             return json.dumps({
-                "status": "filled" if success else "failed",
+                "status": "filled" if fallback_success else "failed",
                 "field_id": field_id,
                 "field_label": field_label,
-                "fallback_used": not success,
+                "fallback_strategy": "fallback",   # ← 明确：主策略失败后走了 fallback
+                "fallback_success": fallback_success,       # ← 独立字段表示 fallback 是否成功
             }, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "field_id": field_id, "error": str(e)}, ensure_ascii=False)
@@ -204,6 +206,13 @@ def wait_for_user(message: str = "请完成操作后按 Enter 继续...") -> str
     """等待用户手动操作（如登录），用户按下回车后继续"""
     input(message)
     return json.dumps({"status": "continue"}, ensure_ascii=False)
+
+@mcp.tool()
+def help() -> str:
+    """返回可用工具列表"""
+    from .server import TOOL_HELP
+    tools_info = {k: v["description"] for k, v in TOOL_HELP.items()}
+    return json.dumps({"tools": tools_info}, ensure_ascii=False)
 
 
 if __name__ == "__main__":
