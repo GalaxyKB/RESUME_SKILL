@@ -317,17 +317,35 @@ Checkpoint恢复
 
 ### 📦 一键安装
 
+<div align="center">
+<img src="https://img.shields.io/badge/Python_版本选择-重要提示-FF6B6B?style=for-the-badge" />
+</div>
+
+**🎯 版本建议：**
+- **🚀 追求最新技术**：使用 **Python 3.10+**（支持MCP SDK现代化架构）
+- **🛡️ 保持稳定兼容**：使用 **Python 3.9**（Legacy模式，功能完整）
+
+**💡 核心差异：**
+| Python版本 | MCP SDK支持 | 功能完整性 | 推荐用户 |
+|:---|:---:|:---:|:---:|
+| **3.10+** | ✅ **原生支持** | 🎯 **最佳体验** | 新用户/愿意升级的用户 |
+| **3.9** | ⚠️ **Legacy模式** | ✅ **功能完整** | 现有用户/追求稳定的用户 |
+
+**📊 技术对比：**
+- **MCP SDK模式**（Python 3.10+）：官方协议、异步架构、更好工具发现
+- **Legacy模式**（Python 3.9）：稳定JSON-RPC、向后兼容、现有功能
+
 <details>
-<summary><b>🖥️ Windows 用户 (推荐)</b></summary>
+<summary><b>🖥️ Windows 用户 (推荐使用conda)</b></summary>
 
 ```powershell
 # 1. 克隆项目
 git clone https://github.com/GalaxyKB/RESUME_SKILL.git
 cd RESUME_SKILL
 
-# 2. 创建虚拟环境
-python -m venv venv
-venv\Scripts\activate
+# 2. 创建conda环境（推荐Python 3.10+以支持MCP SDK）
+conda create -n resume-skill python=3.10
+conda activate resume-skill
 
 # 3. 安装依赖 (开发模式，支持热重载)
 pip install -e .
@@ -337,25 +355,44 @@ playwright install chromium
 resume-skill doctor
 ```
 
+**备选：使用venv（Python 3.9）**
+```powershell
+# 如果使用Python 3.9，可以使用venv
+python -m venv venv
+venv\Scripts\activate
+pip install -e .
+playwright install chromium
+resume-skill doctor
+```
+
 </details>
 
 <details>
-<summary><b>🐧 Linux/macOS 用户</b></summary>
+<summary><b>🐧 Linux/macOS 用户 (推荐使用conda)</b></summary>
 
 ```bash
 # 1. 克隆项目
 git clone https://github.com/GalaxyKB/RESUME_SKILL.git
 cd RESUME_SKILL
 
-# 2. 创建虚拟环境
-python3 -m venv venv
-source venv/bin/activate
+# 2. 创建conda环境（推荐Python 3.10+以支持MCP SDK）
+conda create -n resume-skill python=3.10
+conda activate resume-skill
 
 # 3. 安装依赖
 pip install -e .
 playwright install chromium
 
 # 4. 验证安装
+resume-skill doctor
+```
+
+**备选：使用venv（Python 3.9）**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+playwright install chromium
 resume-skill doctor
 ```
 
@@ -443,6 +480,70 @@ OPENAI_MODEL=gpt-4o
 | 🤖 **OpenAI GPT-4** | ⭐⭐⭐ | 💰💰💰💰 | 🌐 | ⚡⚡ | 备选方案，需要代理，成本较高 |
 
 </div>
+
+### ⚡ MCP SDK 配置 (可选增强功能)
+
+<div align="center">
+<img src="https://img.shields.io/badge/🎯_可选增强-不是必需-FF9800?style=for-the-badge" />
+<img src="https://img.shields.io/badge/🐍_Python_版本-3.10%2B-45BA4B?style=for-the-badge" />
+</div>
+
+**什么是MCP SDK模式？**
+MCP (Model Context Protocol) SDK模式是RESUME_SKILL v2.3的可选增强功能，提供：
+- **🎯 官方协议** - 使用标准MCP协议，非自定义JSON-RPC
+- **⚡ 异步架构** - 现代化并发模型，性能更优
+- **🔧 更好工具发现** - 动态工具注册和描述
+
+**配置方式：**
+```bash
+# 如果使用Python 3.10+环境并希望启用MCP SDK模式
+# 在.env文件中添加（Windows示例）
+MCP_PYTHON_PATH=C:\Users\YourName\anaconda3\envs\resume-skill-mcp\python.exe
+
+# macOS/Linux示例
+MCP_PYTHON_PATH=/Users/yourname/anaconda3/envs/resume-skill-mcp/bin/python
+```
+
+**智能行为：**
+- 如果**不配置** `MCP_PYTHON_PATH`：使用Legacy JSON-RPC模式（100%可用）
+- 如果**配置了** `MCP_PYTHON_PATH`：系统自动检测并使用MCP SDK模式
+
+**💡 用户建议：**
+- **Python 3.9用户**：✅ 无需配置，继续使用Legacy模式，功能完整
+- **Python 3.10+用户**：🎯 配置MCP_PYTHON_PATH，享受现代化优势
+- **新用户**：🚀 直接安装Python 3.10+，配置MCP_PYTHON_PATH，获得最佳体验
+
+**🔍 MCP SDK快速启用指南：**
+```bash
+# 1. 创建Python 3.10+环境（推荐conda）
+conda create -n resume-skill-mcp python=3.10
+conda activate resume-skill-mcp
+
+# 2. 安装MCP SDK和项目
+pip install mcp>=1.0
+pip install -e .
+
+# 3. 配置.env文件
+echo "MCP_PYTHON_PATH=$(which python)" >> .env
+
+# 4. 验证安装
+python -c "import mcp; print('✅ MCP SDK OK')"
+resume-skill doctor
+```
+
+**📊 技术对比：**
+| 特性 | Legacy模式 | MCP SDK模式 | 优势 |
+|:---|:---:|:---:|:---:|
+| **Python版本** | 3.9+ | 3.10+ | MCP: 更现代化 |
+| **通信协议** | JSON-RPC | 官方MCP | MCP: 标准化 |
+| **架构模型** | 同步+线程 | 异步+协程 | MCP: 性能更好 |
+| **工具发现** | 静态配置 | 动态注册 | MCP: 更灵活 |
+| **向后兼容** | ✅ 完全 | ✅ 自动回退 | 两者都安全 |
+
+**🎯 总结：**
+- **现有用户**：无需任何操作，系统自动选择最佳模式
+- **升级用户**：创建Python 3.10+环境，配置MCP_PYTHON_PATH
+- **新用户**：直接使用Python 3.10+，享受完整现代化功能
 
 ---
 
@@ -835,11 +936,11 @@ RESUME_SKILL/
 │   │   ├── workflow.py          # 主流程
 │   │   ├── utils.py             # 工具函数
 │   │   └── mcp/                 # 🆕 MCP架构 (v2.2新增, v2.3增强)
-│   │       ├── server.py        # 工具服务器
-│   │       ├── client.py        # 客户端通信
-│   │       ├── agent.py         # LLM智能Agent
+│   │       ├── server.py        # 工具服务器 (Legacy JSON-RPC)
+│   │       ├── client.py        # 双模式客户端 (Legacy + MCP SDK)
+│   │       ├── agent.py         # LLM智能Agent (支持Function Calling)
 │   │       ├── recorder.py      # 🆕 监控与回放系统 (v2.3)
-│   │       └── server_mcp.py   # 🆕 MCP协议标准化 (预备)
+│   │       └── server_mcp.py   # 🆕 MCP协议标准化 (FastMCP实现，Python 3.10+)
 │   ├── extractor/           # PDF 提取
 │   │   └── extractor.py
 │   └── llm/                 # LLM 提供商
@@ -868,6 +969,7 @@ RESUME_SKILL/
 ├── README.md                # 本文件
 ├── BUGFIX_REPORT.md         # 🆕 v2.2 Bug修复报告 (已修复)
 ├── MCP_REFACTOR_REPORT.md   # 🆕 MCP架构重构报告
+├── MCP_STATUS_REPORT.md     # 🆕 MCP协议标准化状态报告 (v2.3新增)
 ├── config.yaml              # 项目配置
 ├── pytest.ini               # 测试配置
 ├── requirements.txt         # 依赖列表
@@ -918,18 +1020,46 @@ RESUME_SKILL/
 resume-skill apply --url "https://job.example.com/apply" --use-mcp --resume "outputs/mcp_agent/checkpoint_20240101_120000.json"
 ```
 
-#### ⚙️ 方向B - MCP协议标准化 (未来路线图)
-**🎯 规划功能：**
-- 🔄 **官方MCP SDK集成** - 使用标准的mcp>=1.0 Python包
-- 🏗️ **异步架构重构** - 基于async/await的现代并发模型
-- 🎯 **更好的工具发现** - 支持动态工具注册和描述
-- 🔧 **简化错误处理** - 内置MCP协议错误代码和重试逻辑
-- 📚 **标准化文档** - 自动生成OpenAPI兼容的工具文档
+#### ⚙️ 方向B - MCP协议标准化 (可选增强功能)
+**🎯 核心功能：**
+- ✅ **官方MCP SDK集成** - 使用标准的mcp>=1.0 Python包（代码已实现）
+- ✅ **异步架构重构** - 基于async/await的现代并发模型（代码已实现）
+- ✅ **更好的工具发现** - 支持动态工具注册和描述（代码已实现）
+- ✅ **智能错误处理** - 自动回退机制，保证系统稳定性（代码已实现）
+- ✅ **双模式架构** - Legacy JSON-RPC + MCP SDK，完全向后兼容
 
-**⚠️ 当前状态：**
-- ✅ **代码准备就绪** - `server_mcp.py`已创建，等待环境升级
-- ❌ **环境限制** - 需要Python 3.10+，当前为Python 3.9.21
-- 🔄 **兼容性策略** - 保持现有JSON-RPC实现，为升级预留接口
+**🔧 技术特点：**
+- **FastMCP实现** - 所有11个工具使用`@mcp.tool()`装饰器注册
+- **智能模式切换** - Agent根据配置自动选择最佳通信模式
+- **优雅回退** - MCP SDK不可用时自动使用Legacy JSON-RPC
+- **零配置升级** - 现有Python 3.9用户无需任何更改
+
+**📋 使用条件：**
+| 模式 | Python版本 | 安装要求 | 功能状态 |
+|:---|:---|:---|:---|
+| **🎯 Legacy模式** | 3.9+ | 无需额外安装 | ✅ **100%可用**（现有功能） |
+| **🚀 MCP SDK模式** | 3.10+ | `pip install mcp>=1.0` | ✅ **代码完成**，需环境支持 |
+
+**⚡ 快速启用MCP SDK模式：**
+```bash
+# 1. 创建Python 3.10+环境（推荐conda）
+conda create -n resume-skill-mcp python=3.10
+conda activate resume-skill-mcp
+
+# 2. 安装MCP SDK和项目
+pip install mcp>=1.0
+pip install -e .
+
+# 3. 配置MCP路径
+echo "MCP_PYTHON_PATH=$(which python)" >> .env
+
+# 4. 享受MCP SDK现代化优势！
+```
+
+**💡 用户建议：**
+- **Python 3.9用户**：✅ 继续使用Legacy模式，功能完整
+- **Python 3.10+用户**：🎯 启用MCP SDK模式，获得现代化优势
+- **新用户**：🚀 直接安装Python 3.10+，享受最佳体验
 
 #### 🧠 方向C - Function Calling (全新实现)
 **🎯 核心功能：**
