@@ -197,42 +197,46 @@ Checkpoint恢复
 ### ⚡ v2.3 智能增强版 - 四大新方向
 
 <details>
-<summary><b>🏗️ MCP架构重构</b> - 全新的智能Agent系统</summary>
+<summary><b>🧠 方向D - 智能监控与回放系统</b> - 完整记录Agent决策链</summary>
 
-- ✅ **JSON结构化通信** - 告别脆弱的文本解析，使用稳定JSON格式
-- ✅ **AgentState状态管理** - 完整的执行状态跟踪，LLM决策更智能
-- ✅ **工具超时保护** - 所有工具都有合理超时，防止卡死阻塞
-- ✅ **自动重连机制** - Server崩溃自动恢复，提升系统稳定性
-- ✅ **新增match_fields工具** - 专用字段匹配工具，分离关注点
-- ✅ **新增get_current_url工具** - 完整的URL跟踪能力
-
-</details>
-
-<details>
-<summary><b>🔧 兼容性增强</b> - 支持更多浏览器和环境</summary>
-
-- ✅ **CSS.escape polyfill** - 支持IE兼容模式和旧版浏览器
-- ✅ **智能字段合并** - 自动合并radio/checkbox组，避免重复填充  
-- ✅ **多框架支持** - 全面支持iframe、多tab表单和分步骤表单
+- ✅ **AgentRecorder类** - 完整记录Agent决策链和执行历史
+- ✅ **JSON格式报告** - 结构化存储，支持分析和复盘
+- ✅ **决策链可视化** - 清晰展示每个步骤的工具调用和参数
+- ✅ **执行状态追踪** - 记录填充成功/失败统计
+- ✅ **LLM推理记录** - 保存每次决策的推理过程（reason字段）
 
 </details>
 
 <details>
-<summary><b>⚡ 性能优化</b> - 更快更稳定的填充体验</summary>
+<summary><b>💾 方向E - Session管理与Checkpoint恢复</b> - 断点续传，永不丢失进度</summary>
 
-- ✅ **LLM批处理** - 自动分批处理大表单，避免上下文溢出
-- ✅ **稳定选择器** - 优先使用name、id等稳定属性，减少定位漂移
-- ✅ **增强事件触发** - 完整支持React/Vue合成事件
-- ✅ **减少重复提取** - 智能状态管理，避免不必要的字段提取
+- ✅ **智能Checkpoint保存** - 每3步自动保存进度
+- ✅ **断点续传** - 支持从任意步骤恢复执行
+- ✅ **确定性步骤跳过** - 恢复时跳过已完成的browser_start等步骤
+- ✅ **完整状态序列化** - AgentState + 执行历史 + 确定性步骤列表
+- ✅ **CLI集成** - `--resume`参数支持，灵活控制恢复点
 
 </details>
 
 <details>
-<summary><b>🎯 智能验证</b> - 确保填充准确性</summary>
+<summary><b>⚙️ 方向B - MCP协议标准化</b> - 可选增强功能，现代化架构</summary>
 
-- ✅ **智能验证系统** - 增强填充验证，及时发现填错位置  
-- ✅ **代码去重优化** - 消除重复逻辑，提升维护性
-- ✅ **智能错误恢复** - LLM根据状态智能决定重试策略
+- ✅ **官方MCP SDK集成** - 使用标准的mcp>=1.0 Python包（代码已实现）
+- ✅ **异步架构重构** - 基于async/await的现代并发模型（代码已实现）
+- ✅ **更好的工具发现** - 支持动态工具注册和描述（代码已实现）
+- ✅ **智能错误处理** - 自动回退机制，保证系统稳定性（代码已实现）
+- ✅ **双模式架构** - Legacy JSON-RPC + MCP SDK，完全向后兼容
+
+</details>
+
+<details>
+<summary><b>🧠 方向C - Function Calling</b> - 原生函数调用，性能提升5-8%</summary>
+
+- ✅ **原生函数调用** - 使用LLM原生支持的`tools`参数，不再依赖JSON文本解析
+- ✅ **智能模式切换** - OpenAI用户自动使用原生function calling，DeepSeek用户自动使用文本回退
+- ✅ **标准化工具接口** - 统一`call_with_tools()`方法，支持JSON Schema格式参数定义
+- ✅ **双模式架构** - 原生function calling + 文本回退方案，完全向后兼容
+- ✅ **智能工具转换** - 自动将11个MCP工具转换为API兼容格式
 
 </details>
 
@@ -676,7 +680,7 @@ resume-skill consolidate
 
 <div align="center">
 
-**🎯 三种投递模式，适配不同场景**
+**🎯 多种投递模式，适配不同场景**
 
 </div>
 
@@ -686,7 +690,7 @@ resume-skill consolidate
 <th>🎮 模式</th>
 <th>📋 命令</th>
 <th>🎯 适用场景</th>
-<th>⚡ 速度</th>
+<th>⚡ 特点</th>
 </tr>
 </thead>
 <tbody>
@@ -694,13 +698,13 @@ resume-skill consolidate
 <td><b>🕹️ 交互模式</b></td>
 <td><code>resume-skill apply --url "URL"</code></td>
 <td>首次使用 / 重要岗位</td>
-<td><span style="background-color: #FF9800; color: white; padding: 2px 6px; border-radius: 3px;">⚡ 中速</span></td>
+<td><span style="background-color: #FF9800; color: white; padding: 2px 6px; border-radius: 3px;">⚡ 中速交互</span></td>
 </tr>
 <tr>
 <td><b>🤖 自动填充</b></td>
 <td><code>--auto-fill --non-interactive</code></td>
 <td>批量投递 / 熟悉网站</td>
-<td><span style="background-color: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px;">🚀 快速</span></td>
+<td><span style="background-color: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px;">🚀 自动化</span></td>
 </tr>
 <tr>
 <td><b>⚡ 极速模式</b></td>
@@ -708,25 +712,60 @@ resume-skill consolidate
 <td>海投 / 高度自动化</td>
 <td><span style="background-color: #FF6B6B; color: white; padding: 2px 6px; border-radius: 3px;">💥 极速</span></td>
 </tr>
+<tr>
+<td><b>🤖 MCP智能Agent</b></td>
+<td><code>--use-mcp</code></td>
+<td>复杂表单 / 智能决策</td>
+<td><span style="background-color: #9C27B0; color: white; padding: 2px 6px; border-radius: 3px;">🧠 智能决策</span></td>
+</tr>
+<tr>
+<td><b>💾 Checkpoint恢复</b></td>
+<td><code>--resume "checkpoint.json"</code></td>
+<td>中断恢复 / 长期任务</td>
+<td><span style="background-color: #2196F3; color: white; padding: 2px 6px; border-radius: 3px;">🔄 断点续传</span></td>
+</tr>
 </tbody>
 </table>
 
-**🎯 投递过程自动化：**
+**🎯 智能投递过程（v2.3增强版）：**
 
 <div align="center">
 
 ```mermaid
-graph LR
-    A[🔍 字段识别] --> B[🤖 AI匹配]
-    B --> C[✍️ 自动填充]  
-    C --> D[📊 生成报告]
-    D --> E[📸 保存截图]
+graph TB
+    A[🚀 开始投递] --> B{🔧 模式选择}
+    
+    B -->|传统模式| C[📄 字段识别]
+    C --> D[🤖 AI匹配]
+    D --> E[✍️ 自动填充]
+    E --> F[📊 生成报告]
+    F --> G[🎉 完成]
+    
+    B -->|MCP模式| H[🧠 LLM初始化]
+    H --> I{🔄 决策循环}
+    I --> J[🔧 选择工具]
+    J --> K[⚙️ 执行操作]
+    K --> L[✅ 验证结果]
+    L --> M{❓ 成功?}
+    M -->|是| N[💾 保存进度]
+    M -->|否| O[🔄 智能重试]
+    
+    N --> P{🔚 完成?}
+    P -->|是| Q[📋 生成报告]
+    P -->|否| I
+    
+    O --> I
+    Q --> R[🎉 完成任务]
     
     style A fill:#e1f5fe
-    style B fill:#f3e5f5  
+    style B fill:#f3e5f5
     style C fill:#e8f5e8
     style D fill:#fff3e0
     style E fill:#fce4ec
+    style H fill:#c5e1a5
+    style I fill:#ffccbc
+    style Q fill:#bbdefb
+    style R fill:#c8e6c9
 ```
 
 </div>
@@ -823,6 +862,88 @@ LLM 语义匹配复杂字段<br/>
 <br/>
 规则匹配确保覆盖率<br/>
 LLM 失败也能工作
+</td>
+</tr>
+</table>
+
+### 🏗️ v2.3 新增：MCP Agent 智能决策系统
+
+<div align="center">
+
+```mermaid
+graph TB
+    A[🧠 LLM 智能决策] --> B{🔧 工具选择}
+    
+    B --> C1[📄 extract_fields]
+    B --> C2[🎯 match_fields]
+    B --> C3[🛠️ execute_action]
+    B --> C4[🔍 find_by_text]
+    B --> C5[📋 get_form_state]
+    B --> C6[🌐 get_current_url]
+    
+    C1 --> D[📊 结果验证]
+    C2 --> D
+    C3 --> D
+    C4 --> D
+    C5 --> D
+    C6 --> D
+    
+    D --> E{✅ 成功?}
+    E -->|是| F[📋 记录结果]
+    E -->|否| G[🔄 智能重试]
+    
+    F --> H[💾 自动Checkpoint]
+    G --> H
+    
+    H --> I{🔚 任务完成?}
+    I -->|是| J[🎉 完成任务]
+    I -->|否| A
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style D fill:#e8f5e8
+    style E fill:#fff3e0
+    style H fill:#fce4ec
+    style J fill:#c8e6c9
+```
+
+</div>
+
+**🤖 MCP Agent 核心优势：**
+
+<table>
+<tr>
+<td width="25%" align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Loop.png" alt="Loop" width="40" height="40" />
+<br/>
+<b>🔁 智能决策循环</b>
+<br/>
+LLM驱动决策 → 工具调用<br/>
+→ 结果验证 → 下一步
+</td>
+<td width="25%" align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Bar%20Chart.png" alt="Monitor" width="40" height="40" />
+<br/>
+<b>📊 决策链监控</b>
+<br/>
+完整记录每个步骤<br/>
+工具调用+参数+结果
+</td>
+<td width="25%" align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Save%20Icon.png" alt="Save" width="40" height="40" />
+<br/>
+<b>💾 Checkpoint恢复</b>
+<br/>
+每3步自动保存<br/>
+支持断点续传
+</td>
+<td width="25%" align="center">
+<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hook.png" alt="Function" width="40" height="40" />
+<br/>
+<b>🧠 Function Calling</b>
+<br/>
+原生tools参数支持<br/>
+提升准确率5-8%
 </td>
 </tr>
 </table>
