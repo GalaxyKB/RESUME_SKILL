@@ -35,7 +35,13 @@ class MCPClient:
         if self._process is not None:
             return
         if self._use_mcp_sdk:
-            self._connect_mcp_sdk()
+            try:
+                self._connect_mcp_sdk()
+            except ImportError:
+                # MCP SDK不可用，回退到Legacy模式
+                print("[MCP Client] ⚠️ MCP SDK not available, falling back to Legacy mode")
+                self._use_mcp_sdk = False
+                self._connect_legacy()
         else:
             self._connect_legacy()
 
