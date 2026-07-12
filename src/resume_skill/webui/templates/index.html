@@ -233,58 +233,35 @@ body{background:#f4f6f9;font-size:14px;color:#333}
     <button class="btn btn-success btn-lg-action float-right" @click="step=6">下一步 → 批量投递</button>
   </div>
 
-  <!-- Step 5: Scout ------------------------------------------------------------->
-  <div v-if="step===5">
+  <!-- Step 4: Scout ------------------------------------------------------------->
+  <div v-if="step===4">
     <div class="card" v-if="prefs.target_companies.length">
-      <div class="card-header">第 4 步 — 批量登录 &amp; 岗位勘探</div>
+      <div class="card-header">第 4 步 — 岗位勘探</div>
       <div class="card-body">
-        <h6 class="text-muted mb-3">需登录的招聘官网</h6>
         <div v-for="(c,i) in prefs.target_companies" :key="i" class="d-flex align-items-center border rounded p-2 mb-1 bg-light">
           <div class="mr-2"><b>{{c.name}}</b></div>
           <div class="text-muted small flex-grow-1">{{c.url}}</div>
-          <span v-if="loginDone[i]" class="badge badge-success">已登录</span>
-          <span v-else class="badge badge-secondary">待登录</span>
         </div>
 
-        <div v-if="!loginsStarted" class="mt-3">
-          <button class="btn btn-primary btn-lg-action" @click="startLogins" :disabled="loginsStarted">
-            拉起所有公司官网进行登录
-          </button>
-          <p class="text-muted small mt-1">Chrome 浏览器会自动打开，请在各公司页面完成登录/注册。</p>
-        </div>
-        <div v-if="scoutStatus && loginsStarted && !loginsConfirmed" class="alert alert-info mt-2 py-2">
-          <div v-if="scoutStatus" class="d-flex align-items-center">
-            <div class="spinner-border spinner-border-sm mr-2"></div>
-            <span>{{scoutStatus}}</span>
-          </div>
-        </div>
-
-        <div v-if="loginsStarted && !loginsConfirmed" class="mt-3 p-3 border rounded" style="background:#fffde7">
-          <h6>请完成以下操作</h6>
-          <ol class="small mb-2">
-            <li v-for="(c,i) in prefs.target_companies" :key="i">在打开的标签页中完成 <b>{{c.name}}</b> 的登录/注册</li>
-          </ol>
-          <p class="small text-muted">全部登录完成后，点击下方按钮，Agent 开始分析各公司招聘页面。</p>
-          <button class="btn btn-success btn-lg-action" @click="confirmLogins">
-            <span v-if="confirming">确认中...</span>
-            <span v-else>✅ 已完成所有登录，开始分析</span>
-          </button>
-        </div>
+        <button class="btn btn-primary btn-lg-action mt-3" @click="startScout" :disabled="scoutRunning">
+          {{scoutRunning ? '勘探中...' : '开始勘探'}}
+        </button>
+        <p class="text-muted small mt-2">Chrome 浏览器打开后，请手动在各公司页面完成登录。完成后回到此页查看结果。</p>
 
         <div v-if="scoutRunning" class="progress mt-2" style="height:6px;max-width:300px">
           <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#4ecdc4"></div>
         </div>
-        <div v-if="loginsStarted" class="mt-3">
-          <small class="text-muted">分析日志：</small>
-          <div class="log-box">{{scoutLog.length ? scoutLog.join('\n') : (scoutRunning ? '正在启动分析...\n' : '等待开始...\n')}}</div>
+        <div v-if="scoutRunning || scoutLog.length || scoutResults.length" class="mt-3">
+          <small class="text-muted">日志：</small>
+          <div class="log-box">{{scoutLog.length ? scoutLog.join('\n') : '正在启动...\n'}}</div>
         </div>
         <div v-if="scoutResults.length" class="mt-3">
           <table class="table table-sm table-hover">
-            <thead><tr><th>公司</th><th>岗位</th><th>操作</th></tr></thead>
+            <thead><tr><th>公司</th><th>链接</th><th>操作</th></tr></thead>
             <tbody>
             <tr v-for="r in scoutResults" :key="r.company">
               <td><b>{{r.company}}</b></td>
-              <td><div v-for="j in r.matched_jobs" :key="j.link">{{j.title}}</div></td>
+              <td><a :href="r.url" target="_blank" class="small">{{r.url}}</a></td>
               <td><button class="btn btn-sm btn-outline-primary" @click="addToApply(r)">加入投递列表</button></td>
             </tr></tbody>
           </table>
@@ -292,9 +269,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
       </div>
     </div>
     <div v-if="!prefs.target_companies.length" class="card">
-      <div class="card-body">
-        <p class="text-muted">请先在上一页添加目标公司。</p>
-      </div>
+      <div class="card-body"><p class="text-muted">请先在上一页添加目标公司。</p></div>
     </div>
     <button class="btn btn-success btn-lg-action float-right mt-2" @click="step=5">下一步 → 网申填写</button>
   </div>
@@ -334,8 +309,7 @@ new Vue({
     newCompanyName:'',newCompanyUrl:'',savingPrefs:false,prefsSaved:false,
     // Step 5 (Form Filling)
     fillPdfFile:null,filling:false,fillError:'',fillFields:[],fillResult:null,
-    // Step 5 (Scout)
-    loginsStarted:false,loginsConfirmed:false,loginDone:[],confirming:false,scoutStatus:'',
+    // Step 4 (Scout)
     scoutRunning:false,scoutLog:[],scoutResults:[],pollTimer:null,
     // Step 5
     applyList:[],applying:false,
@@ -393,29 +367,15 @@ new Vue({
       }catch(e){this.fillError=e.message}this.filling=false
     },
     async saveFillResult(){this.fillResult={fields:this.fillFields};alert('填写结果已保存');},
-    // Step 5 (Scout)
-    async startLogins(){
-      if(!this.prefs.target_companies.length)return;
-      this.loginsStarted=true;this.loginsConfirmed=false;this.loginDone=this.prefs.target_companies.map(()=>false);
-      this.scoutStatus='正在启动 Chrome 浏览器...';
-      try{
-        const r=await fetch('/api/scout/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:this.prefs.target_companies})});
-        const d=await r.json();
-        if(d.error)this.scoutStatus='启动失败: '+d.error;
-        else this.scoutStatus='';
-      }catch(e){this.scoutStatus='启动失败: '+e.message}
-    },
-    async confirmLogins(){
-      this.confirming=true;
-      this.loginDone=this.prefs.target_companies.map(()=>true);
-      this.scoutRunning=true;this.scoutLog=[];this.scoutResults=[];this.loginsConfirmed=true;
+    // Step 4 (Scout)
+    async startScout(){
+      this.scoutRunning=true;this.scoutLog=[];this.scoutResults=[];
       try{await fetch('/api/scout/start',{method:'POST'});this.pollScout()}catch(e){this.scoutRunning=false}
-      this.confirming=false
     },
-    async startScout(){this.scoutRunning=true;this.scoutLog=[];this.scoutResults=[];try{await fetch('/api/scout/start',{method:'POST'});this.pollScout()}catch(e){this.scoutRunning=false}},
     async pollScout(){
       if(!this.scoutRunning)return
-      try{const r=await fetch('/api/scout/status');const d=await r.json();this.scoutLog=d.log||[];if(Array.isArray(d.results))this.scoutResults=d.results;if(d.running)this.pollTimer=setTimeout(()=>this.pollScout(),1500);else this.scoutRunning=false}catch(e){this.scoutRunning=false}
+      try{const r=await fetch('/api/scout/status');const d=await r.json();this.scoutLog=d.log||[];if(Array.isArray(d.results))this.scoutResults=d.results;
+      if(d.running)this.pollTimer=setTimeout(()=>this.pollScout(),1500);else this.scoutRunning=false}catch(e){this.scoutRunning=false}
     },
     addToApply(r){for(const j of(r.matched_jobs||[])){if(!this.applyList.some(a=>a.company===r.company&&a.link===j.link))this.applyList.push({company:r.company,title:j.title,link:j.link})}},
     // Step 5

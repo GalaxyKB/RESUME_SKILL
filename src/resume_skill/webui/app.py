@@ -336,12 +336,6 @@ def _scout_worker(profile_text: str, preferences: dict):
         _scout_progress["running"] = False
         log("勘探结束")
 
-    except Exception as e:
-        log(f"勘探失败: {e}")
-    finally:
-        _scout_progress["running"] = False
-        log("勘探结束")
-
 
 @app.route("/api/scout/start", methods=["POST"])
 def api_scout_start():
