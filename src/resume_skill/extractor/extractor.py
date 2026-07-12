@@ -347,6 +347,52 @@ class PersonalInfoExtractor:
         print(f"       Saved to: {output_path}")
         return result
 
+    # ──────────────────────────────────────────────
+    # New: Analyze MD vs reference → find missing fields
+    # ──────────────────────────────────────────────
+
+    def analyze_missing_fields(self, md_content: str) -> list[str]:
+        """Compare resume MD with job fields reference, return missing field names."""
+        ref_path = Path(__file__).parent / "job_fields_reference.md"
+        if not ref_path.exists():
+            return ["（参考模板不存在，请确认 job_fields_reference.md 存在）"]
+
+        reference = ref_path.read_text(encoding="utf-8")
+        if not self.llm_client:
+            return ["请配置 LLM API Key"]
+
+        prompt = f"""你是一个简历分析AI。比较以下两部分内容：
+
+## 申请人的简历信息（MD格式）
+{md_content[:6000]}
+
+## 网申表单常用字段清单
+{reference[:3000]}
+
+请分析：简历信息中**缺失**了哪些网申常用字段？
+只考虑对求职真正重要的字段（如姓名、手机号、邮箱、学校等），忽略不那么重要的细节字段。
+
+返回 JSON 格式：{{"missing": ["缺失字段1", "缺失字段2", ...], "reason": "简要说明为什么这些字段需要补充"}}"""
+        try:
+            result = self.llm_client.call_json("", prompt)
+            if isinstance(result, dict) and "missing" in result:
+                return result["missing"]
+        except Exception:
+            pass
+        return []
+
+    @staticmethod
+    def prepend_missing_fields(md_content: str, missing_fields: list[str]) -> str:
+        """Prepend missing fields as a '待补全的信息' section to the top of MD."""
+        if not missing_fields:
+            return md_content
+
+        header = "## 待补全的信息（请填写以下缺少的信息）\n\n"
+        items = "\n".join(f"- [ ] {f}" for f in missing_fields)
+        note = "\n\n--- 简历原始内容 ---\n\n"
+
+        return header + items + note + md_content.lstrip()
+
     def _save_unified_profile(self, profile: dict[str, Any]) -> str:
         output_path = self.personal_info_dir / "unified_profile.yaml"
         output_path.parent.mkdir(parents=True, exist_ok=True)

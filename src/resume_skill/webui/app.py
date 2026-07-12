@@ -98,14 +98,34 @@ def api_profile_template():
     return jsonify({"exists": False, "content": ""})
 
 
-@app.route("/api/profile/unified", methods=["GET"])
-def api_profile_unified():
-    """读取 unified_profile.yaml"""
-    path = CONFIG.unified_profile_path
-    if path.exists():
-        content = path.read_text(encoding="utf-8")
-        return jsonify({"exists": True, "content": content})
-    return jsonify({"exists": False, "content": ""})
+@app.route("/api/profile/analyze", methods=["POST"])
+def api_profile_analyze():
+    """Analyze MD vs reference, return missing fields."""
+    try:
+        from ..extractor.extractor import PersonalInfoExtractor
+        data = request.get_json() or {}
+        md_content = data.get("content", "")
+        if not md_content:
+            return jsonify({"missing": [], "error": "内容为空"})
+
+        extractor = PersonalInfoExtractor(personal_info_dir=str(CONFIG.personal_info_dir))
+        missing = extractor.analyze_missing_fields(md_content)
+        return jsonify({"missing": missing})
+    except Exception as e:
+        return jsonify({"missing": [], "error": str(e)}), 500
+
+
+@app.route("/api/profile/prepare", methods=["POST"])
+def api_profile_prepare():
+    """Add missing fields prompt to MD top, return updated MD."""
+    try:
+        data = request.get_json() or {}
+        md_content = data.get("content", "")
+        missing = data.get("missing", [])
+        updated = PersonalInfoExtractor.prepend_missing_fields(md_content, missing)
+        return jsonify({"content": updated})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ─── 偏好设置 API ──────────────────────────────────────────
@@ -249,6 +269,15 @@ def api_apply_start():
 
 # ─── 启动 ──────────────────────────────────────────────────
 
+def _clean_previous_run():
+    """Remove generated files from previous runs so each session starts fresh."""
+    for f in ["profile_template.md", "unified_profile.yaml"]:
+        p = CONFIG.personal_info_dir / f
+        if p.exists():
+            p.unlink()
+            print(f"  [clean] removed: {f}")
+
+
 def _safe_print(msg: str):
     try:
         print(msg)
@@ -257,7 +286,9 @@ def _safe_print(msg: str):
         print(safe)
 
 
-def run_webui(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
+def run_webui(host: str = "127.0.0.1", port: int = 5000, debug: bool = False, clean: bool = False):
+    if clean:
+        _clean_previous_run()
     _safe_print("\n  [RESUME_SKILL] Web UI started")
     _safe_print(f"  URL: http://{host}:{port}")
     _safe_print("  Press Ctrl+C to stop\n")
@@ -265,4 +296,9 @@ def run_webui(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
 
 
 if __name__ == "__main__":
-    run_webui()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("--clean", action="store_true", help="清理上次运行的记录")
+    p.add_argument("--port", type=int, default=5000)
+    args, _ = p.parse_known_args()
+    run_webui(port=args.port, clean=args.clean)

@@ -98,36 +98,39 @@ body{background:#f4f6f9;font-size:14px;color:#333}
     <button class="btn btn-success btn-lg-action float-right" @click="step=2" :disabled="!extractOK">下一步 → 审核档案</button>
   </div>
 
-  <!-- Step 2: Review Profile ----------------------------------------------------->
+  <!-- Step 2: Review MD & Fill Missing Fields ------------------------------------>
   <div v-if="step===2">
     <div class="card">
-      <div class="card-header">第 2 步 — 审核 &amp; 编辑提取结果</div>
+      <div class="card-header">第 2 步 — 完善简历档案</div>
       <div class="card-body">
-        <div class="row">
-          <div class="col-md-6">
-            <label class="font-weight-bold">提取的档案内容（可直接编辑）：</label>
-            <div class="text-muted small mb-2">💡 修改后点"保存修改"，再点"重新整合生成YAML"。模板中无法归类到左侧字段的额外信息（如竞赛、证书、兴趣爱好）会自动归入 YAML 的 supplementary 字段，填表时 LLM 也会参考。</div>
-            <textarea class="form-control editor-area" v-model="templateContent"></textarea>
-          </div>
-          <div class="col-md-6">
-            <label class="font-weight-bold">生成的统一档案 YAML：</label>
-            <textarea class="form-control editor-area" v-model="unifiedContent" readonly style="background:#f8f9fa"></textarea>
-          </div>
+        <div class="mb-3">
+          <label class="font-weight-bold">简历档案（markdown 格式，可直接编辑）：</label>
+          <textarea class="form-control editor-area" v-model="templateContent" style="min-height:380px"></textarea>
         </div>
-        <div class="mt-3 d-flex">
-          <button class="btn btn-primary mr-3" @click="saveTemplate" :disabled="savingTemplate">
-            {{savingTemplate ? '保存中...' : '保存修改'}}
+
+        <div v-if="missingFields.length" class="alert alert-warning py-2">
+          <b>待补全的信息（{{missingFields.length}} 项）</b>
+          <div v-for="(f,i) in missingFields" :key="i" class="form-check">
+            <input class="form-check-input" type="checkbox" :id="'mf'+i" v-model="missingChecked[i]">
+            <label class="form-check-label" :for="'mf'+i">{{f}}</label>
+          </div>
+          <button class="btn btn-sm btn-warning mt-2" @click="prependMissing">已勾选的补到顶部</button>
+        </div>
+
+        <div class="d-flex align-items-center">
+          <button class="btn btn-primary mr-2" @click="analyzeMissing" :disabled="analyzing">
+            {{analyzing ? '分析中...' : '分析缺漏'}}
           </button>
-          <button class="btn btn-success mr-3" @click="doConsolidate" :disabled="consolidating">
-            {{consolidating ? '整合中...' : '重新整合生成 YAML'}}
+          <button class="btn btn-success mr-2" @click="saveTemplate" :disabled="savingTemplate">
+            {{savingTemplate ? '保存中...' : '💾 保存'}}
           </button>
-          <span :class="'status-badge '+(consolidateOK?'status-done':consolidateErr?'status-error':'')">
-            {{consolidateOK ? '已整合' : consolidateErr||''}}
+          <span :class="'status-badge '+(templateSaved?'status-done':'status-pending')">
+            {{templateSaved ? '已保存' : '等待保存'}}
           </span>
         </div>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=3" :disabled="!consolidateOK">下一步 → 求职偏好</button>
+    <button class="btn btn-success btn-lg-action float-right" @click="step=3">下一步 → 求职偏好</button>
   </div>
 
   <!-- Step 3: Preferences -------------------------------------------------------->
@@ -226,8 +229,8 @@ new Vue({
     // Step 1
     pdfFile:null,pdfName:'',extracting:false,extractOK:false,extractErr:'',
     // Step 2
-    templateContent:'',unifiedContent:'',savingTemplate:false,
-    consolidating:false,consolidateOK:false,consolidateErr:'',
+    templateContent:'',savingTemplate:false,templateSaved:false,
+    missingFields:[],missingChecked:[],analyzing:false,
     // Step 3
     prefs:{personal_info:{base_city:'',job_type:'校招',preferred_industries:[]},target_companies:[]},
     newCompanyName:'',newCompanyUrl:'',savingPrefs:false,prefsSaved:false,
@@ -249,19 +252,22 @@ new Vue({
       if(!this.pdfFile)return;this.extracting=true;this.extractOK=false;this.extractErr='';
       const fd=new FormData();fd.append('file',this.pdfFile);
       try{const r=await fetch('/api/extract',{method:'POST',body:fd});const d=await r.json();
-        if(d.status==='extracted'){this.extractOK=true;await this.loadTemplate();await this.loadUnified()}
+        if(d.status==='extracted'){this.extractOK=true;await this.loadTemplate()}
         else this.extractErr=d.error||'未知错误'
       }catch(e){this.extractErr=e.message}this.extracting=false
     },
     // Step 2
-    async loadTemplate(){try{const r=await fetch('/api/profile/template');const d=await r.json();if(d.exists)this.templateContent=d.content}catch(e){}},
-    async loadUnified(){try{const r=await fetch('/api/profile/unified');const d=await r.json();if(d.exists)this.unifiedContent=d.content}catch(e){}},
-    async saveTemplate(){this.savingTemplate=true;try{await fetch('/api/profile/template',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:this.templateContent})})}catch(e){}this.savingTemplate=false},
-    async doConsolidate(){
-      this.consolidating=true;this.consolidateOK=false;this.consolidateErr='';
-      try{const r=await fetch('/api/consolidate',{method:'POST'});const d=await r.json();
-        if(d.status==='consolidated'){this.consolidateOK=true;await this.loadUnified()}else this.consolidateErr=d.error||''
-      }catch(e){this.consolidateErr=e.message}this.consolidating=false
+    async loadTemplate(){try{const r=await fetch('/api/profile/template');const d=await r.json();if(d.exists)this.templateContent=d.content;this.templateSaved=false}catch(e){}},
+    async saveTemplate(){this.savingTemplate=true;this.templateSaved=false;try{await fetch('/api/profile/template',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:this.templateContent})});this.templateSaved=true}catch(e){}this.savingTemplate=false},
+    async analyzeMissing(){
+      if(!this.templateContent)return;this.analyzing=true;
+      try{const r=await fetch('/api/profile/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:this.templateContent})});const d=await r.json();this.missingFields=d.missing||[];this.missingChecked=this.missingFields.map(()=>true)}catch(e){}
+      this.analyzing=false
+    },
+    async prependMissing(){
+      const selected=this.missingFields.filter((_,i)=>this.missingChecked[i]);if(!selected.length)return
+      try{const r=await fetch('/api/profile/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:this.templateContent,missing:selected})});const d=await r.json();if(d.content)this.templateContent=d.content}catch(e){}
+      this.missingFields=[];this.templateSaved=false
     },
     // Step 3
     async loadPreferences(){try{const r=await fetch('/api/preferences');const d=await r.json();if(d?.personal_info)this.prefs=d}catch(e){}},

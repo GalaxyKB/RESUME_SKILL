@@ -55,12 +55,17 @@ class MCPAgent:
         self.recorder = AgentRecorder()
         self._resume_from = resume_from
 
-    def _load_profile(self) -> dict[str, Any]:
-        profile_path = CONFIG.unified_profile_path
-        if profile_path.exists():
-            return load_yaml(profile_path) or {}
-        print(f"Profile not found at {profile_path}")
-        return {}
+    def _load_profile(self) -> str:
+        """Load profile_template.md as the source of truth. Fallback to unified_profile.yaml."""
+        md_path = CONFIG.personal_info_dir / "profile_template.md"
+        if md_path.exists():
+            return md_path.read_text(encoding="utf-8")
+        yaml_path = CONFIG.unified_profile_path
+        if yaml_path.exists():
+            data = load_yaml(yaml_path) or {}
+            return json.dumps(data, ensure_ascii=False, indent=2)
+        print(f"[WARNING] No profile found at {md_path} or {yaml_path}")
+        return ""
 
     # ─── snapshot 解析 ──────────────────────────────────
 
@@ -132,15 +137,14 @@ class MCPAgent:
 
     def _answer_fields(self, fields: list[dict]) -> list[dict]:
         """
-        将表单字段列表 + 用户档案打包成一个 LLM 调用，LLM 以 Q&A 方式回答每个字段应填什么。
+        将表单字段列表 + 用户档案（MD格式）打包成一个 LLM 调用，LLM 以 Q&A 方式回答每个字段应填什么。
 
         返回: [{uid, answer, confidence, action}, ...]
         """
-        profile_json = json.dumps(self.profile, ensure_ascii=False, indent=2)
         fields_json = json.dumps(fields, ensure_ascii=False, indent=2)
 
         prompt = f"""
-你是一个表单填充助手。根据用户档案，回答每个字段应该填什么。
+你是一个表单填充助手。根据用户档案（MD格式），回答每个字段应该填什么。
 
 ## 规则
 - 如果档案中有对应信息，填写准确值，confidence 为 "high"
@@ -149,10 +153,10 @@ class MCPAgent:
 - 对于下拉选择字段，从 options 中选最匹配的选项；如果选项中没有精确匹配，选最接近的
 - 敏感字段（身份证号、政治面貌、银行卡号、家庭住址、护照号等）标记 action 为 "manual"
 - 正常字段标记 action 为 "fill"
-- 如果结构化字段中没有匹配项，检查 supplementary 字段（raw_skills、self_assessment、other_info），从中提取可能相关的信息填充
+- 如果以上结构化字段中无法找到答案，尝试从 MD 其他部分（如待补全信息、技能列表、自我评价）中寻找线索
 
 ## 用户档案
-{profile_json}
+{self.profile}
 
 ## 表单字段
 {fields_json}
@@ -172,7 +176,7 @@ class MCPAgent:
 
         self.profile = self._load_profile()
         if not self.profile:
-            console.print("[red]找不到用户档案，请先运行 resume-skill consolidate[/]")
+            console.print("[red]找不到用户档案（profile_template.md），请先在 WebUI 中上传简历并提取[/]")
             return
 
         # 连接双 MCP Server

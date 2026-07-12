@@ -168,7 +168,7 @@ def cmd_webui(args: argparse.Namespace) -> int:
     """Start the Web UI."""
     print_section("RESUME_SKILL Web UI")
     from .webui.app import run_webui
-    run_webui(host=args.host, port=args.port, debug=args.debug)
+    run_webui(host=args.host, port=args.port, debug=args.debug, clean=args.clean)
     return 0
 
 
@@ -229,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     webui_p.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
     webui_p.add_argument("--port", type=int, default=5000, help="Port to bind (default: 5000)")
     webui_p.add_argument("--debug", action="store_true", help="Enable Flask debug mode")
+    webui_p.add_argument("--clean", action="store_true", help="清理上次运行的旧记录")
 
     args = parser.parse_args(argv)
 
