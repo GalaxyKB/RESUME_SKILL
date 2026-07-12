@@ -106,6 +106,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         <div class="row">
           <div class="col-md-6">
             <label class="font-weight-bold">提取的档案内容（可直接编辑）：</label>
+            <div class="text-muted small mb-2">💡 修改后点"保存修改"，再点"重新整合生成YAML"。模板中无法归类到左侧字段的额外信息（如竞赛、证书、兴趣爱好）会自动归入 YAML 的 supplementary 字段，填表时 LLM 也会参考。</div>
             <textarea class="form-control editor-area" v-model="templateContent"></textarea>
           </div>
           <div class="col-md-6">

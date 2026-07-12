@@ -149,6 +149,7 @@ class MCPAgent:
 - 对于下拉选择字段，从 options 中选最匹配的选项；如果选项中没有精确匹配，选最接近的
 - 敏感字段（身份证号、政治面貌、银行卡号、家庭住址、护照号等）标记 action 为 "manual"
 - 正常字段标记 action 为 "fill"
+- 如果结构化字段中没有匹配项，检查 supplementary 字段（raw_skills、self_assessment、other_info），从中提取可能相关的信息填充
 
 ## 用户档案
 {profile_json}

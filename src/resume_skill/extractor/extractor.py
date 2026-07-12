@@ -302,6 +302,11 @@ class PersonalInfoExtractor:
     "publications": [],
     "certifications": [],
     "languages": []
+  }},
+  "supplementary": {{
+    "raw_skills": [],
+    "self_assessment": "",
+    "other_info": []
   }}
 }}
 ```
@@ -313,6 +318,7 @@ class PersonalInfoExtractor:
 3. 多条教育/实习/项目全部保留，不要只取第一条
 4. 只输出JSON，不要任何其他文字
 5. self_introduction 基于提取的完整信息自动生成：short 不超过100字，medium 不超过300字
+6. supplementary 存放所有结构化字段无法覆盖的信息：raw_skills 放简历中的技能关键词（即使用户技能不在编程语言/框架/工具分类中），self_assessment 放自我评价段落，other_info 放其他所有无法归类的字段（如竞赛经历、兴趣爱好、证书编号等）
 """
         try:
             result = self.llm_client.call_json("", prompt)
@@ -330,6 +336,7 @@ class PersonalInfoExtractor:
             "projects": [], "skills": {"programming_languages": [], "frameworks": [], "tools": [], "domains": []},
             "awards": [], "self_introduction": {"short": "", "medium": ""},
             "additional": {"publications": [], "certifications": [], "languages": []},
+            "supplementary": {"raw_skills": [], "self_assessment": "", "other_info": []},
         }
         for k, v in defaults.items():
             if k not in result:
