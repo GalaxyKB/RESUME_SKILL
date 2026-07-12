@@ -275,38 +275,50 @@ def _scout_worker(profile_text: str, preferences: dict):
         _scout_progress["running"] = False
         return
 
-    from ..llm.factory import create_llm_client
+    from resume_skill.llm.factory import create_llm_client
     llm = create_llm_client()
 
+    def _get_page_ids() -> list[int]:
+        try:
+            result = chrome.call_tool("list_pages", {})
+            text = str(result)
+            ids = []
+            for line in text.split("\n"):
+                if "pageId=" in line:
+                    import re
+                    m = re.search(r"pageId=(\d+)", line)
+                    if m:
+                        ids.append(int(m.group(1)))
+            return ids
+        except:
+            return list(range(1, 20))
+
     def _llm_analyze_jobs(company_name: str, snapshot_text: str) -> list[dict]:
-        """Use LLM to analyze the page, extract and match job listings."""
-        # Try to find and use search/filter form
         prompt = f"""你是一个招聘页面分析AI。分析以下招聘页面的无障碍树，完成以下任务：
 
 ## 任务
 1. 找到页面中的所有职位信息（标题、链接等）
-2. 如果页面有搜索框或筛选控件，描述应该用什么关键词搜索匹配的岗位
-3. 根据用户档案（如下）判断哪些职位可能是该用户感兴趣的
+2. 根据用户档案（如下）判断哪些职位可能是该用户感兴趣的
 
-## 用户档案
+## \u7528\u6237\u6863\u6848
 {profile_text[:4000]}
 
-## 页面无障碍树
+## \u9875\u9762\u65e0\u969c\u788d\u6811
 {snapshot_text[:6000]}
 
-返回 JSON（不要代码块）：
-{{"search_fields": [{{"uid":"...", "label":"...", "action":"在搜索框填入什么关键词"}}],
-  "found_jobs": [{{"title":"岗位名称", "uid":"岗位链接元素的UID"}}],
-  "analysis": "简要分析说明"}}"""
+\u8fd4\u56de JSON\uff08\u4e0d\u8981\u4ee3\u7801\u5757\uff09：
+{{"found_jobs": [{{\u201ctitle\u201d:\u201d\u5c97\u4f4d\u540d\u79f0\u201d}}],
+  \u201canalysis\u201d: \u201c\u7b80\u8981\u5206\u6790\u8bf4\u660e\u201d}}"""
         try:
             result = llm.call_json("", prompt)
             if isinstance(result, dict):
                 return result.get("found_jobs", [])
         except Exception as e:
-            log(f"  LLM分析失败: {e}")
+            log(f"  LLM\u5206\u6790\u5931\u8d25: {e}")
         return []
 
     try:
+        page_ids = _get_page_ids()
         companies = preferences.get("target_companies", [])
         for i, company in enumerate(companies):
             name = company.get("name", f"公司{i+1}")
@@ -316,39 +328,30 @@ def _scout_worker(profile_text: str, preferences: dict):
 
             log(f"[{name}] 正在分析...")
             try:
-                # Select the tab for this company (tabs are numbered 1,2,3...)
-                if i > 0:
+                if i > 0 and i < len(page_ids):
                     try:
-                        chrome.call_tool("select_page", {"page": i + 1})
+                        chrome.call_tool("select_page", {"pageId": page_ids[i]})
                         time.sleep(1)
-                    except Exception:
-                        log(f"[{name}] 无法选择标签页，尝试重新导航")
-                        url = company.get("url", "")
-                        if url:
-                            chrome.call_tool("navigate_page", {"url": url})
-                            time.sleep(2)
+                    except Exception as e:
+                        log(f"[{name}] 无法选择标签页: {str(e)[:60]}")
 
-                # Take snapshot to see the page
                 snapshot = chrome.call_tool("take_snapshot", {})
                 log(f"[{name}] 页面已读取")
 
-                # LLM analyze the page
                 found_jobs = _llm_analyze_jobs(name, str(snapshot))
                 if found_jobs:
                     log(f"[{name}] 找到 {len(found_jobs)} 个匹配岗位")
                 else:
-                    log(f"[{name}] 暂无匹配岗位（页面结构可能需要手动优化）")
+                    log(f"[{name}] 暂无匹配岗位")
 
-                # Current jobs found from this company
                 company_results = []
                 for j in found_jobs[:5]:
                     title = j.get("title", "未知岗位")
-                    uid = j.get("uid", "")
-                    link = f"{company.get('url', '')} (uid: {uid})"
+                    link = company.get("url", "")
                     company_results.append({"title": title, "link": link})
 
                 if not company_results:
-                    company_results.append({"title": "(暂未匹配到岗位，请手动查看)", "link": company.get("url", "")})
+                    company_results.append({"title": "(暂无匹配岗位)", "link": company.get("url", "")})
 
                 _scout_progress["results"].append({
                     "company": name,
@@ -358,8 +361,6 @@ def _scout_worker(profile_text: str, preferences: dict):
                 log(f"[{name}] 完成")
             except Exception as e:
                 log(f"[{name}] 出错: {e}")
-                import traceback
-                traceback.print_exc()
 
     except Exception as e:
         log(f"勘探失败: {e}")
