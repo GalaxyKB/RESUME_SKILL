@@ -21,6 +21,7 @@ app = Flask(__name__, template_folder="templates")
 
 # ─── 全局状态 ────────────────────────────────────────────
 _scout_progress: dict[str, Any] = {"running": False, "log": [], "results": []}
+_chrome_instance: Any = None  # Keep Chrome alive across requests
 
 
 def _ensure_dirs():
@@ -171,25 +172,27 @@ def api_scout_login():
     if not companies:
         return jsonify({"error": "没有公司"}), 400
 
+    global _chrome_instance
     def _open_all():
+        global _chrome_instance
         from .mcp.chrome_client import ChromeDevToolsClient
-        chrome = ChromeDevToolsClient(headless=False)
+        _chrome_instance = ChromeDevToolsClient(headless=False)
         try:
-            chrome.connect()
+            _chrome_instance.connect()
             for i, c in enumerate(companies):
                 name = c.get("name", "?")
                 url = c.get("url", "")
                 if not url:
                     continue
                 if i == 0:
-                    chrome.call_tool("navigate_page", {"url": url})
+                    _chrome_instance.call_tool("navigate_page", {"url": url})
                 else:
-                    chrome.call_tool("new_page", {"url": url})
+                    _chrome_instance.call_tool("new_page", {"url": url})
                 print(f"[scout] 已打开 {name}: {url}")
         except Exception as e:
             print(f"[scout] 打开页面失败: {e}")
-            import traceback; traceback.print_exc()
 
+    # Start Chrome in a daemon thread
     thread = threading.Thread(target=_open_all, daemon=True)
     thread.start()
     return jsonify({"status": "opened", "count": len(companies)})
