@@ -21,6 +21,7 @@ personal_info/formal_resume/*
 personal_info/general_information/*
 !personal_info/general_information/.gitkeep
 personal_info/*.pdf
+job_preferences.yaml
 
 # Output and records
 outputs/
