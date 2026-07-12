@@ -164,6 +164,14 @@ def cmd_setup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_webui(args: argparse.Namespace) -> int:
+    """Start the Web UI."""
+    print_section("RESUME_SKILL Web UI")
+    from .webui.app import run_webui
+    run_webui(host=args.host, port=args.port, debug=args.debug)
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     from .agent.workflow import run_doctor
     return run_doctor()
@@ -216,6 +224,12 @@ def main(argv: list[str] | None = None) -> int:
     # doctor
     subparsers.add_parser("doctor", help="Check LLM connectivity and configuration")
 
+    # webui
+    webui_p = subparsers.add_parser("webui", help="Start web management interface")
+    webui_p.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
+    webui_p.add_argument("--port", type=int, default=5000, help="Port to bind (default: 5000)")
+    webui_p.add_argument("--debug", action="store_true", help="Enable Flask debug mode")
+
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -228,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         "apply": cmd_apply,
         "setup": cmd_setup,
         "doctor": cmd_doctor,
+        "webui": cmd_webui,
     }
 
     handler = commands.get(args.command)

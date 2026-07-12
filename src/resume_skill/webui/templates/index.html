@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESUME_SKILL v2.4</title>
+<link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.16/vue.min.js"></script>
+<style>
+body { background: #f5f7fa; font-size: 14px; }
+.navbar-brand img { width: 28px; margin-right: 8px; }
+.step-box { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.step-box h5 { margin-bottom: 12px; color: #333; }
+.badge-step { background: #667eea; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-right: 8px; }
+.log-area { background: #1a1a2e; color: #a0f0a0; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 6px; height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+.company-tag { display: inline-block; background: #e8f4fd; color: #2c7be5; padding: 4px 12px; border-radius: 16px; margin: 3px; font-size: 13px; }
+.company-tag .del { cursor: pointer; margin-left: 6px; opacity: .5; }
+.company-tag .del:hover { opacity: 1; }
+.tab-content { padding-top: 20px; }
+.btn-action { min-width: 120px; }
+.table-matches th { background: #f8f9fa; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.green { background: #4caf50; }
+.status-dot.orange { background: #ff9800; }
+.status-dot.gray { background: #9e9e9e; }
+@media (max-width: 768px) { .container { padding: 8px; } }
+</style>
+</head>
+<body>
+<div id="app">
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+  <a class="navbar-brand" href="#"><b>🎯 RESUME_SKILL</b> <small>v2.4</small></a>
+  <ul class="navbar-nav ml-auto flex-row">
+    <li class="nav-item mr-2">
+      <a class="nav-link" href="#" @click.prevent="tab='dashboard'" :class="{'text-white font-weight-bold':tab==='dashboard'}">📋 简历</a>
+    </li>
+    <li class="nav-item mr-2">
+      <a class="nav-link" href="#" @click.prevent="tab='preferences'" :class="{'text-white font-weight-bold':tab==='preferences'}">⚙️ 偏好</a>
+    </li>
+    <li class="nav-item mr-2">
+      <a class="nav-link" href="#" @click.prevent="tab='scout'" :class="{'text-white font-weight-bold':tab==='scout'}">🔍 勘探</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" @click.prevent="tab='apply'" :class="{'text-white font-weight-bold':tab==='apply'}">🚀 投递</a>
+    </li>
+  </ul>
+</nav>
+
+<div class="container-fluid p-3" style="max-width:1100px;margin:auto;">
+
+  <!-- ===== Dashboard ===== -->
+  <div v-if="tab==='dashboard'">
+    <h4 class="mb-3">📋 简历管理</h4>
+    <div class="step-box">
+      <h5><span class="badge-step">1</span>上传简历</h5>
+      <div class="custom-file mb-2">
+        <input type="file" class="custom-file-input" id="pdfFile" accept=".pdf" @change="onFileChange">
+        <label class="custom-file-label" for="pdfFile">{{pdfFile ? pdfFile.name : '选择 PDF 简历文件'}}</label>
+      </div>
+      <button class="btn btn-primary btn-action" @click="doExtract" :disabled="!pdfFile || extracting">
+        {{extracting ? '提取中...' : '🤖 AI 智能提取'}}
+      </button>
+      <div v-if="extractResult" class="mt-2" :class="extractResult.status === 'extracted' ? 'text-success' : 'text-danger'">
+        {{ extractResult.status === 'extracted' ? '✅ 提取完成' : '❌ ' + extractResult.error }}
+      </div>
+    </div>
+
+    <div class="step-box">
+      <h5><span class="badge-step">2</span>整合档案</h5>
+      <button class="btn btn-primary btn-action" @click="doConsolidate" :disabled="consolidating">
+        {{consolidating ? '整合中...' : '📋 生成统一档案'}}
+      </button>
+      <div v-if="consolidateResult" class="mt-2" :class="consolidateResult.status === 'consolidated' ? 'text-success' : 'text-danger'">
+        {{ consolidateResult.status === 'consolidated' ? '✅ 已生成 unified_profile.yaml' : '❌ ' + consolidateResult.error }}
+      </div>
+    </div>
+
+    <div class="step-box">
+      <h5><span class="badge-step">3</span>查看当前档案</h5>
+      <button class="btn btn-outline-secondary btn-action mb-2" @click="loadProfile">🔄 刷新</button>
+      <pre v-if="profileData" style="max-height:300px;overflow:auto;background:#f8f9fa;padding:12px;border-radius:6px;font-size:12px;">{{ profileData }}</pre>
+      <div v-else class="text-muted">尚未生成档案</div>
+    </div>
+  </div>
+
+  <!-- ===== Preferences ===== -->
+  <div v-if="tab==='preferences'">
+    <h4 class="mb-3">⚙️ 求职偏好设置</h4>
+    <div class="step-box">
+      <h5>基本信息</h5>
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <label>目标城市</label>
+          <input class="form-control" v-model="prefs.personal_info.base_city" placeholder="如 北京">
+        </div>
+        <div class="form-group col-md-4">
+          <label>岗位类型</label>
+          <select class="form-control" v-model="prefs.personal_info.job_type">
+            <option>日常实习</option>
+            <option>暑期实习</option>
+            <option>校招</option>
+            <option>社招</option>
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>偏好行业（逗号分隔）</label>
+          <input class="form-control" v-model="industriesText" placeholder="如 互联网,人工智能">
+        </div>
+      </div>
+    </div>
+
+    <div class="step-box">
+      <h5>目标公司</h5>
+      <p class="text-muted small">添加你想投递的公司招聘官网</p>
+      <div class="form-row mb-2">
+        <div class="col-md-4 mb-1"><input class="form-control" v-model="newCompanyName" placeholder="公司名称"></div>
+        <div class="col-md-6 mb-1"><input class="form-control" v-model="newCompanyUrl" placeholder="招聘官网 URL"></div>
+        <div class="col-md-2"><button class="btn btn-success btn-block" @click="addCompany">+ 添加</button></div>
+      </div>
+      <div v-if="prefs.target_companies.length === 0" class="text-muted">暂无公司，请添加</div>
+      <div v-for="(c,i) in prefs.target_companies" :key="i" class="company-tag">
+        {{c.name}} <small class="text-muted">({{c.url}})</small>
+        <span class="del" @click="removeCompany(i)">×</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-action" @click="savePreferences" :disabled="savingPrefs">
+      {{savingPrefs ? '保存中...' : '💾 保存偏好设置'}}
+    </button>
+    <span v-if="prefsSaved" class="ml-2 text-success">✅ 已保存</span>
+  </div>
+
+  <!-- ===== Scout ===== -->
+  <div v-if="tab==='scout'">
+    <h4 class="mb-3">🔍 智能岗位勘探</h4>
+    <div class="step-box">
+      <p class="text-muted">系统将依次打开每个公司的招聘官网，自动搜索并匹配适合你的岗位。</p>
+      <button class="btn btn-primary btn-action" @click="startScout" :disabled="scoutRunning || prefs.target_companies.length === 0">
+        {{scoutRunning ? '勘探中...' : '🚀 开始勘探'}}
+      </button>
+      <span v-if="prefs.target_companies.length === 0" class="ml-2 text-warning">请先在「偏好」页添加目标公司</span>
+    </div>
+
+    <div v-if="scoutLog.length > 0" class="step-box">
+      <h5>实时日志</h5>
+      <div class="log-area">{{ scoutLog.join('\n') }}</div>
+    </div>
+
+    <div v-if="scoutResults.length > 0" class="step-box">
+      <h5>勘探结果</h5>
+      <table class="table table-sm table-hover table-matches">
+        <thead><tr><th>公司</th><th>匹配岗位</th><th>链接</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr v-for="(r,ri) in scoutResults" :key="ri">
+            <td><b>{{r.company}}</b></td>
+            <td>
+              <div v-for="(j,ji) in r.matched_jobs" :key="ji" class="mb-1">
+                <span class="status-dot green"></span>{{j.title}}
+              </div>
+            </td>
+            <td>
+              <div v-for="(j,ji) in r.matched_jobs" :key="ji">
+                <a :href="j.link" target="_blank" class="small">{{j.link.slice(0,50)}}...</a>
+              </div>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" @click="addToApply(r)" :disabled="inApplyList(r)">{{inApplyList(r) ? '已添加' : '添加投递'}}</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Apply ===== -->
+  <div v-if="tab==='apply'">
+    <h4 class="mb-3">🚀 批量投递</h4>
+    <div class="step-box">
+      <h5>待投递岗位（{{applyList.length}} 个）</h5>
+      <div v-if="applyList.length === 0" class="text-muted">从「勘探」页添加岗位到投递列表</div>
+      <ul class="list-group mb-2">
+        <li class="list-group-item d-flex justify-content-between align-items-center" v-for="(item,i) in applyList" :key="i">
+          <span><b>{{item.company}}</b> — {{item.title}}</span>
+          <span><a :href="item.link" target="_blank" class="small text-muted">打开</a> <span class="badge badge-danger badge-pill ml-2" style="cursor:pointer" @click="removeFromApply(i)">×</span></span>
+        </li>
+      </ul>
+      <button class="btn btn-primary btn-action" @click="startApply" :disabled="applying || applyList.length === 0">
+        {{applying ? '投递中...' : '🚀 开始批量投递'}}
+      </button>
+    </div>
+  </div>
+
+</div><!-- container -->
+</div><!-- app -->
+
+<script>
+new Vue({
+  el: '#app',
+  data: {
+    tab: 'dashboard',
+    // Dashboard
+    pdfFile: null,
+    extracting: false,
+    extractResult: null,
+    consolidating: false,
+    consolidateResult: null,
+    profileData: null,
+    // Preferences
+    prefs: { personal_info: { base_city: '', job_type: '校招', preferred_industries: [] }, target_companies: [] },
+    newCompanyName: '',
+    newCompanyUrl: '',
+    savingPrefs: false,
+    prefsSaved: false,
+    // Scout
+    scoutRunning: false,
+    scoutLog: [],
+    scoutResults: [],
+    pollTimer: null,
+    // Apply
+    applyList: [],
+    applying: false,
+  },
+  computed: {
+    industriesText: {
+      get() {
+        const arr = this.prefs.personal_info.preferred_industries || [];
+        return arr.join(',');
+      },
+      set(val) {
+        this.prefs.personal_info.preferred_industries = val.split(',').map(s=>s.trim()).filter(Boolean);
+      }
+    }
+  },
+  methods: {
+    // ─── Dashboard ───
+    onFileChange(e) {
+      this.pdfFile = e.target.files[0];
+      this.extractResult = null;
+    },
+    async doExtract() {
+      if (!this.pdfFile) return;
+      this.extracting = true;
+      this.extractResult = null;
+      const form = new FormData();
+      form.append('file', this.pdfFile);
+      try {
+        const r = await fetch('/api/extract', { method: 'POST', body: form });
+        this.extractResult = await r.json();
+      } catch(e) { this.extractResult = { status: 'error', error: e.message }; }
+      this.extracting = false;
+    },
+    async doConsolidate() {
+      this.consolidating = true;
+      this.consolidateResult = null;
+      try {
+        const r = await fetch('/api/consolidate', { method: 'POST' });
+        this.consolidateResult = await r.json();
+      } catch(e) { this.consolidateResult = { status: 'error', error: e.message }; }
+      this.consolidating = false;
+    },
+    async loadProfile() {
+      try {
+        const r = await fetch('/api/profile');
+        const d = await r.json();
+        this.profileData = d.exists ? JSON.stringify(d.data, null, 2) : null;
+      } catch(e) { this.profileData = '加载失败: ' + e.message; }
+    },
+    // ─── Preferences ───
+    async loadPreferences() {
+      try {
+        const r = await fetch('/api/preferences');
+        const d = await r.json();
+        if (d && d.personal_info) this.prefs = d;
+      } catch(e) { console.error(e); }
+    },
+    addCompany() {
+      if (!this.newCompanyName.trim() || !this.newCompanyUrl.trim()) return;
+      this.prefs.target_companies.push({ name: this.newCompanyName.trim(), url: this.newCompanyUrl.trim() });
+      this.newCompanyName = '';
+      this.newCompanyUrl = '';
+    },
+    removeCompany(i) { this.prefs.target_companies.splice(i, 1); },
+    async savePreferences() {
+      this.savingPrefs = true;
+      this.prefsSaved = false;
+      try {
+        await fetch('/api/preferences', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(this.prefs) });
+        this.prefsSaved = true;
+      } catch(e) { console.error(e); }
+      this.savingPrefs = false;
+    },
+    // ─── Scout ───
+    async startScout() {
+      this.scoutRunning = true;
+      this.scoutLog = [];
+      this.scoutResults = [];
+      try {
+        await fetch('/api/scout/start', { method: 'POST' });
+        this.pollScout();
+      } catch(e) { this.scoutRunning = false; }
+    },
+    async pollScout() {
+      const poll = async () => {
+        if (!this.scoutRunning) return;
+        try {
+          const r = await fetch('/api/scout/status');
+          const d = await r.json();
+          this.scoutLog = d.log || [];
+          if (Array.isArray(d.results)) this.scoutResults = d.results;
+          if (d.running) {
+            this.pollTimer = setTimeout(poll, 1500);
+          } else {
+            this.scoutRunning = false;
+          }
+        } catch(e) {
+          this.scoutRunning = false;
+        }
+      };
+      this.pollTimer = setTimeout(poll, 1000);
+    },
+    inApplyList(r) { return this.applyList.some(a => a.company === r.company && a.link === (r.matched_jobs[0]||{}).link); },
+    addToApply(r) {
+      for (const j of (r.matched_jobs || [])) {
+        if (!this.applyList.some(a => a.company === r.company && a.link === j.link)) {
+          this.applyList.push({ company: r.company, title: j.title, link: j.link });
+        }
+      }
+    },
+    removeFromApply(i) { this.applyList.splice(i, 1); },
+    // ─── Apply ───
+    async startApply() {
+      if (this.applyList.length === 0) return;
+      this.applying = true;
+      try {
+        const urls = this.applyList.map(a => a.link).filter(Boolean);
+        await fetch('/api/apply/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({urls}) });
+        alert(`已开始投递 ${urls.length} 个岗位，请到浏览器中完成登录操作。`);
+      } catch(e) { alert('启动失败: ' + e.message); }
+      this.applying = false;
+    },
+  },
+  mounted() {
+    this.loadProfile();
+    this.loadPreferences();
+  },
+  beforeDestroy() {
+    if (this.pollTimer) clearTimeout(this.pollTimer);
+  }
+});
+</script>
+</body>
+</html>
