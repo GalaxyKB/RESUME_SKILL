@@ -29,17 +29,15 @@ class ChromeDevToolsClient:
             args.append("--headless")
         args.append("--isolated")
         
-        # Windows需要shell=True
-        cmd = "npx " + " ".join(args)
-        print(f"启动 chrome-devtools-mcp: {cmd}")
+        command_args = ["npx"] + args
+        print(f"启动 chrome-devtools-mcp: {' '.join(command_args)}")
         self._process = subprocess.Popen(
-            cmd,
+            command_args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
-            shell=True
         )
         
         # 等待进程启动

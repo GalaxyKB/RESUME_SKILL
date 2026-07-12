@@ -67,7 +67,7 @@
 <tr>
 <th>🔧 功能模块</th>
 <th>🗿 传统方式</th>
-<th>🚀 RESUME_SKILL v2.3</th>
+<th>🚀 RESUME_SKILL v2.4</th>
 <th>📈 提升倍数</th>
 </tr>
 </thead>
@@ -132,7 +132,7 @@
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="60" height="60" />
 </div>
 
-### 🎊 v2.3 重大更新 - 智能增强版
+### 🎊 v2.4 重大更新 - 智能增强版
 
 <div align="center">
 <table>
@@ -184,7 +184,7 @@ Checkpoint恢复
 
 </div>
 
-### 🆕 v2.3 新增核心技术
+### 🆕 v2.4 新增核心技术
 
 <div align="center">
 
@@ -194,49 +194,44 @@ Checkpoint恢复
 
 </div>
 
-### ⚡ v2.3 智能增强版 - 四大新方向
+### 🤖 v2.4 MCP Agent 技术栈
+
+<div align="center">
+
+| 🤖 **MCP Agent v2.4** | 🔧 **Google DevTools** | 🧠 **LLM Q&A** | ⚡ **无障碍树** |
+|:---:|:---:|:---:|:---:|
+| ![MCP v2.4](https://img.shields.io/badge/MCP-Dual_Server-45BA4B?style=flat-square&logo=python) | ![ChromeDevTools](https://img.shields.io/badge/Chrome_DevTools-Google-4285F4?style=flat-square&logo=googlechrome) | ![LLM Q&A](https://img.shields.io/badge/LLM-Q&A_Matching-FF6B6B?style=flat-square&logo=openai) | ![Snapshot](https://img.shields.io/badge/Snapshot-UID_Locate-412991?style=flat-square&logo=python) |
+
+</div>
+
+### ⚡ v2.4 架构重构 - 基于 Google Chrome DevTools MCP
 
 <details>
-<summary><b>🧠 方向D - 智能监控与回放系统</b> - 完整记录Agent决策链</summary>
+<summary><b>🏗️ Google Chrome DevTools MCP 集成</b> - 浏览器操作交给 Google</summary>
 
-- ✅ **AgentRecorder类** - 完整记录Agent决策链和执行历史
-- ✅ **JSON格式报告** - 结构化存储，支持分析和复盘
-- ✅ **决策链可视化** - 清晰展示每个步骤的工具调用和参数
-- ✅ **执行状态追踪** - 记录填充成功/失败统计
-- ✅ **LLM推理记录** - 保存每次决策的推理过程（reason字段）
+- ✅ **chrome-devtools-mcp** - 集成 Google 官方 MCP Server，50+ 浏览器自动化工具
+- ✅ **无障碍树定位** - 使用 `take_snapshot` 代替 CSS 选择器，UID 精确定位元素，告别选择器漂移
+- ✅ **LLM Q&A 匹配** - 将表单字段转为问答，LLM 基于用户档案回答，替代关键词规则匹配
+- ✅ **双 MCP Server 架构** - Agent 同时连接 Google Server（浏览器操作）+ 自建 Server（语义决策）
 
 </details>
 
 <details>
-<summary><b>💾 方向E - Session管理与Checkpoint恢复</b> - 断点续传，永不丢失进度</summary>
+<summary><b>🧠 核心流程</b> - snapshot → parse → Q&A → fill</summary>
 
-- ✅ **智能Checkpoint保存** - 每3步自动保存进度
-- ✅ **断点续传** - 支持从任意步骤恢复执行
-- ✅ **确定性步骤跳过** - 恢复时跳过已完成的browser_start等步骤
-- ✅ **完整状态序列化** - AgentState + 执行历史 + 确定性步骤列表
-- ✅ **CLI集成** - `--resume`参数支持，灵活控制恢复点
-
-</details>
-
-<details>
-<summary><b>⚙️ 方向B - MCP协议标准化</b> - 可选增强功能，现代化架构</summary>
-
-- ✅ **官方MCP SDK集成** - 使用标准的mcp>=1.0 Python包（代码已实现）
-- ✅ **异步架构重构** - 基于async/await的现代并发模型（代码已实现）
-- ✅ **更好的工具发现** - 支持动态工具注册和描述（代码已实现）
-- ✅ **智能错误处理** - 自动回退机制，保证系统稳定性（代码已实现）
-- ✅ **双模式架构** - Legacy JSON-RPC + MCP SDK，完全向后兼容
+- ✅ **take_snapshot** - 获取页面无障碍树，自动识别所有表单字段（含 uid、label、type、options）
+- ✅ **_parse_snapshot** - 正则解析文本格式的无障碍树为结构化字段列表
+- ✅ **_answer_fields** - LLM 问答式匹配，返回 {uid, answer, confidence, action}
+- ✅ **fill 循环** - 高置信度自动填充，敏感字段自动跳过，支持翻页
 
 </details>
 
 <details>
-<summary><b>🧠 方向C - Function Calling</b> - 原生函数调用，性能提升5-8%</summary>
+<summary><b>📊 精简与性能</b> - 代码量大幅减少</summary>
 
-- ✅ **原生函数调用** - 使用LLM原生支持的`tools`参数，不再依赖JSON文本解析
-- ✅ **智能模式切换** - OpenAI用户自动使用原生function calling，DeepSeek用户自动使用文本回退
-- ✅ **标准化工具接口** - 统一`call_with_tools()`方法，支持JSON Schema格式参数定义
-- ✅ **双模式架构** - 原生function calling + 文本回退方案，完全向后兼容
-- ✅ **智能工具转换** - 自动将11个MCP工具转换为API兼容格式
+- ✅ **删除 ~2000 行** - browser_agent.py / form_extractor.py / form_filler.py / field_matcher.py 不再用于 MCP 路径
+- ✅ **server 精简** - MCP Server 仅保留 `wait_for_user` 一个工具（从 11 个缩减）
+- ✅ **Puppeteer 原生事件** - React/Vue 合成事件由 Google Puppeteer 自动处理，不再手动 dispatchEvent
 
 </details>
 
@@ -338,6 +333,278 @@ Checkpoint恢复
 **📊 技术对比：**
 - **MCP SDK模式**（Python 3.10+）：官方协议、异步架构、更好工具发现
 - **Legacy模式**（Python 3.9）：稳定JSON-RPC、向后兼容、现有功能
+
+### 🐍 v2.4 虚拟环境配置（必须）
+
+**⚠️ 重要：v2.4 需要专门的虚拟环境**，因为需要同时支持Python 3.10+（MCP SDK）和Node.js（chrome-devtools-mcp）。
+
+<details>
+<summary><b>🎯 方案一：使用 Conda（推荐）</b> - 一体化环境管理</summary>
+
+#### **步骤1：创建虚拟环境**
+```bash
+# 创建包含 Python 3.10+ 和 Node.js 的 conda 环境
+conda create -n resume-skill-v24 python=3.10 nodejs -y
+conda activate resume-skill-v24
+```
+
+#### **步骤2：验证环境**
+```bash
+# 检查 Python 版本
+python --version  # 应为 Python 3.10+
+# 检查 Node.js 版本  
+node --version    # 应为 v18.x 或更高
+# 检查 npx 可用性
+npx --version
+```
+
+#### **步骤3：安装项目依赖**
+```bash
+# 克隆项目（如果尚未克隆）
+git clone https://github.com/GalaxyKB/RESUME_SKILL.git
+cd RESUME_SKILL
+
+# 安装 Python 依赖
+pip install -e .
+
+# 安装 Playwright 浏览器
+playwright install chromium
+
+# 验证安装
+resume-skill doctor
+```
+
+#### **步骤4：测试 v2.4 MCP Agent**
+```bash
+# 测试 chrome-devtools-mcp 可用性
+npx chrome-devtools-mcp@latest --help
+
+# 测试 v2.4 功能
+python tests/test_chrome_full.py
+```
+
+</details>
+
+<details>
+<summary><b>🔄 方案二：手动配置（备选）</b> - 使用现有 Python 和 Node.js</summary>
+
+#### **前提条件**
+- ✅ Python 3.10+ 已安装
+- ✅ Node.js v18+ 已安装
+- ✅ npx 命令可用
+
+#### **步骤1：创建 Python 虚拟环境**
+```bash
+# Windows
+python -m venv venv-v24
+venv-v24\Scripts\activate
+
+# Linux/macOS
+python3 -m venv venv-v24
+source venv-v24/bin/activate
+```
+
+#### **步骤2：安装依赖**
+```bash
+# 安装 Python 依赖
+pip install -e .
+playwright install chromium
+
+# 安装 MCP SDK（可选但推荐）
+pip install mcp>=1.0
+```
+
+#### **步骤3：环境配置**
+```bash
+# 获取 Python 路径（用于 .env 配置）
+# Windows PowerShell
+(Get-Command python).Source
+
+# Windows CMD
+where python
+
+# Linux/macOS
+which python
+
+# 将得到的路径填入 .env 文件的 MCP_PYTHON_PATH
+# 例如：MCP_PYTHON_PATH=C:\Users\YourName\venv-v24\Scripts\python.exe
+```
+
+</details>
+
+<details>
+<summary><b>🔧 环境切换脚本（高级用户）</b></summary>
+
+创建切换脚本，方便在不同版本间切换：
+
+**Windows (`switch-env.ps1`)**:
+```powershell
+# 激活 v2.4 环境
+if ($args[0] -eq "v24") {
+    conda activate resume-skill-v24
+    Write-Host "✅ 已激活 v2.4 环境" -ForegroundColor Green
+}
+# 激活 v2.3 环境  
+elseif ($args[0] -eq "v23") {
+    conda activate resume-skill-v23
+    Write-Host "✅ 已激活 v2.3 环境" -ForegroundColor Green
+}
+# 显示帮助
+else {
+    Write-Host "用法: .\switch-env.ps1 v24|v23" -ForegroundColor Yellow
+    Write-Host "  v24 - 激活 v2.4 (Python 3.10+ + Node.js)" -ForegroundColor Cyan
+    Write-Host "  v23 - 激活 v2.3 (Python 3.9)" -ForegroundColor Cyan
+}
+```
+
+**Linux/macOS (`switch-env.sh`)**:
+```bash
+#!/bin/bash
+
+case $1 in
+    "v24")
+        conda activate resume-skill-v24
+        echo "✅ 已激活 v2.4 环境"
+        ;;
+    "v23")
+        conda activate resume-skill-v23
+        echo "✅ 已激活 v2.3 环境"
+        ;;
+    *)
+        echo "用法: source switch-env.sh v24|v23"
+        echo "  v24 - 激活 v2.4 (Python 3.10+ + Node.js)"
+        echo "  v23 - 激活 v2.3 (Python 3.9)"
+        ;;
+esac
+```
+
+</details>
+
+### 💡 环境使用建议
+
+| 场景 | 推荐方案 | 说明 |
+|:---|:---|:---|
+| **全新安装** | 方案一（Conda） | 最简配置，Python + Node.js 一体化管理 |
+| **已有 Node.js** | 方案二（手动） | 复用现有 Node.js，创建 Python venv |
+| **多版本测试** | 创建多个环境 | 分别创建 `resume-skill-v23` 和 `resume-skill-v24` |
+| **CI/CD** | 方案二 + 脚本 | 通过脚本精确控制环境变量和依赖 |
+
+### 🔧 环境管理脚本
+
+项目提供便捷的环境管理脚本：
+
+**🔍 环境验证脚本：**
+```bash
+# 验证当前环境配置
+python scripts/verify_environment.py
+```
+
+**🔄 环境切换脚本：**
+```bash
+# Windows (PowerShell)
+.\scripts\switch_env.ps1 v24      # 激活 v2.4 环境
+.\scripts\switch_env.ps1 v23      # 激活 v2.3 环境  
+.\scripts\switch_env.ps1 base     # 返回基础环境
+
+# Linux/macOS
+source scripts/switch_env.sh v24  # 激活 v2.4 环境
+source scripts/switch_env.sh v23  # 激活 v2.3 环境
+source scripts/switch_env.sh base # 返回基础环境
+```
+
+**📋 快速安装脚本（一键安装）：**
+```bash
+# Windows
+.\scripts\install_v24.ps1
+
+# Linux/macOS
+bash scripts/install_v24.sh
+```
+
+### 🚨 常见问题
+
+<details>
+<summary><b>Q1：为什么需要 Node.js？</b></summary>
+
+v2.4 使用 Google 的 `chrome-devtools-mcp`，这是一个基于 Node.js 的 MCP Server。`npx` 命令用于：
+- 自动下载和运行 `chrome-devtools-mcp@latest`
+- 启动 Chrome DevTools Protocol 服务
+- 提供 29 个浏览器自动化工具
+</details>
+
+<details>
+<summary><b>Q2：我可以用现有的 Python 3.9 环境吗？</b></summary>
+
+**可以，但有功能限制：**
+- ✅ 可以使用 `resume-skill apply`（不带 `--use-mcp`）
+- ✅ 可以使用 `resume-skill extract` 和 `consolidate`
+- ❌ **无法使用** `resume-skill apply --use-mcp`（v2.4 MCP Agent）
+
+**建议：** 创建单独的 v2.4 环境用于 MCP Agent 功能。
+</details>
+
+<details>
+<summary><b>Q3：环境激活失败怎么办？</b></summary>
+
+**检查 Conda 是否正确安装：**
+```bash
+# 检查 conda 版本
+conda --version
+
+# 查看可用环境
+conda env list
+
+# 重新创建环境
+conda remove -n resume-skill-v24 --all
+conda create -n resume-skill-v24 python=3.10 nodejs -y
+```
+
+**检查系统 PATH：**
+```bash
+# Windows
+echo %PATH%
+
+# Linux/macOS
+echo $PATH
+
+# 确保 conda 路径在 PATH 中
+# Windows: C:\Users\YourName\anaconda3\Scripts\
+# macOS/Linux: ~/anaconda3/bin/
+```
+</details>
+
+<details>
+<summary><b>Q4：如何验证环境配置正确？</b></summary>
+
+运行环境验证脚本：
+```bash
+# Python 版本
+python --version
+
+# Node.js 版本
+node --version
+
+# npx 可用性
+npx --version
+
+# chrome-devtools-mcp 可用性
+npx chrome-devtools-mcp@latest --help
+
+# 项目功能验证
+resume-skill doctor
+python tests/test_chrome_full.py
+```
+
+**预期输出：**
+- ✅ Python 3.10+
+- ✅ Node.js v18+
+- ✅ npx 版本号
+- ✅ chrome-devtools-mcp 帮助文档
+- ✅ resume-skill doctor 通过
+- ✅ Chrome 客户端测试通过
+</details>
+
+---
 
 <details>
 <summary><b>🖥️ Windows 用户 (推荐使用conda)</b></summary>
@@ -712,12 +979,7 @@ resume-skill consolidate
 <td>海投 / 高度自动化</td>
 <td><span style="background-color: #FF6B6B; color: white; padding: 2px 6px; border-radius: 3px;">💥 极速</span></td>
 </tr>
-<tr>
-<td><b>🤖 MCP智能Agent</b></td>
-<td><code>--use-mcp</code></td>
-<td>复杂表单 / 智能决策</td>
-<td><span style="background-color: #9C27B0; color: white; padding: 2px 6px; border-radius: 3px;">🧠 智能决策</span></td>
-</tr>
+<tr><td><b>🤖 v2.4 MCP Agent</b></td><td><code>resume-skill apply --url "URL" --use-mcp</code></td><td><span style="background-color: #4ECDC4; color: white; padding: 2px 6px; border-radius: 3px;">~30s</span></td></tr>
 <tr>
 <td><b>💾 Checkpoint恢复</b></td>
 <td><code>--resume "checkpoint.json"</code></td>
@@ -727,7 +989,7 @@ resume-skill consolidate
 </tbody>
 </table>
 
-**🎯 智能投递过程（v2.3增强版）：**
+**🎯 智能投递过程（v2.4）：**
 
 <div align="center">
 
@@ -866,7 +1128,31 @@ LLM 失败也能工作
 </tr>
 </table>
 
-### 🏗️ v2.3 新增：MCP Agent 智能决策系统
+
+### 🤖 v2.4 LLM Q&A 智能匹配
+
+v2.4 抛弃了固定的三阶关键词匹配规则，改用 LLM 问答模式：
+
+**匹配流程：**
+1. **take_snapshot** 获取页面无障碍树 → 提取所有表单字段（uid + label + type + options）
+2. **将字段列表 + 用户档案打包为一个 prompt**，让 LLM 以 Q&A 方式回答每个字段应填什么
+3. LLM 返回结构化结果：`[{uid: "1_5", answer: "张三", confidence: "high", action: "fill"}, ...]`
+4. **高置信度字段自动 fill**，低置信度跳过，敏感字段标记 manual
+
+**示例：**
+| 表单字段 | LLM 问答 | 结果 |
+|---------|---------|------|
+| `textbox "就读高校" uid=1_7` | 档案中有 education[0].school="北京大学" → answer: "北京大学" | confidence: high, fill |
+| `combobox "学历" options="高中,本科,硕士,博士" uid=1_6` | 档案中 degree="本科"，选项中有精确匹配 → answer: "本科" | confidence: high, fill |
+| `textbox "身份证号" uid=1_8` | 检测到敏感字段关键词 → action: manual | 跳过，需用户手动填写 |
+| `textbox "期望薪资" uid=1_9` | 档案中无此信息 → answer: "未提供" | confidence: low, 跳过 |
+
+**优势：**
+- 无需维护关键词规则（23 条规则全部移除）
+- LLM 自动处理字段名的语义变体（"就读高校"/"毕业院校"/"大学名称" 都识别为 school）
+- 下拉选项智能匹配（"本科"→"学士学位" 语义等同）
+- 字段数越多 LLM 性价比越高，一次调用回答所有字段
+### 🏗️ v2.4 新增：MCP Agent 智能决策系统
 
 <div align="center">
 
@@ -1056,11 +1342,12 @@ RESUME_SKILL/
 │   │   ├── jd_analyzer.py       # JD 分析
 │   │   ├── workflow.py          # 主流程
 │   │   ├── utils.py             # 工具函数
-│   │   └── mcp/                 # 🆕 MCP架构 (v2.2新增, v2.3增强)
+│   │   └── mcp/                 # 🆕 MCP架构 (v2.4)
 │   │       ├── server.py        # 工具服务器 (Legacy JSON-RPC)
 │   │       ├── client.py        # 双模式客户端 (Legacy + MCP SDK)
+│   │       ├── chrome_client.py # 🆕 Google Chrome DevTools MCP 客户端 (v2.4)
 │   │       ├── agent.py         # LLM智能Agent (支持Function Calling)
-│   │       ├── recorder.py      # 🆕 监控与回放系统 (v2.3)
+│   │       ├── recorder.py      # 🆕 监控与回放系统 (v2.4)
 │   │       └── server_mcp.py   # 🆕 MCP协议标准化 (FastMCP实现，Python 3.10+)
 │   ├── extractor/           # PDF 提取
 │   │   └── extractor.py
@@ -1088,7 +1375,7 @@ RESUME_SKILL/
 ├── pyproject.toml           # Python 包配置
 ├── .env.example             # API 配置模板
 ├── README.md                # 本文件
-├── BUGFIX_REPORT.md         # 🆕 v2.2 Bug修复报告 (已修复)
+├── BUGFIX_REPORT.md         # 🆕 v2.3 Bug修复报告 (已修复)
 ├── MCP_REFACTOR_REPORT.md   # 🆕 MCP架构重构报告
 ├── MCP_STATUS_REPORT.md     # 🆕 MCP协议标准化状态报告 (v2.3新增)
 ├── config.yaml              # 项目配置
@@ -1097,7 +1384,7 @@ RESUME_SKILL/
 └── LICENSE                  # MIT 许可证
 ```
 
-## 🆕 v2.3 智能增强版最新功能
+## 🆕 v2.4 智能增强版最新功能
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Star.png" alt="Star" width="60" height="60" />
@@ -1220,13 +1507,14 @@ else:
 - ✅ `agent.py` - 新增`_build_tools_for_api()`和智能双模式调用
 
 **📊 优势对比：**
-| 特性 | v2.2及以前 | v2.3方向C | 提升幅度 |
+| 特性 | v2.3及以前 | v2.4 | 提升幅度 |
 |:---|:---:|:---:|:---:|
 | **工具调用方式** | JSON文本解析 | 原生function calling | 结构化提升 |
 | **调用准确率** | 90-95% | 95-98% | +5-8% |
 | **参数验证** | 无验证 | JSON Schema验证 | ∞ |
 | **错误处理** | 文本解析错误 | 结构化错误 | 3x |
 | **可维护性** | 硬编码解析 | 标准协议 | 5x |
+| **浏览器自动化** | 自建 Playwright + 九策略填充 | Google Chrome DevTools MCP 50+ 工具 | 代码减少 90% |
 
 ---
 
@@ -1943,9 +2231,184 @@ API 密钥 .env 文件保护<br/>
 ---
 
 <p><i>⚡ RESUME_SKILL - 让每一次求职投递都精准高效！</i></p>
-<p><i>🎯 Version v2.3 - 智能增强版</i></p>
+<p><i>🎯 Version v2.4 - 智能增强版</i></p>
 <p><i>✅ <b>四大新方向全面完成：</b> 智能监控(D) + Checkpoint恢复(E) + MCP协议(B) + Function Calling(C)</i></p>
 <p><i>🔧 <b>代码质量全面升级：</b> 修复14个核心问题，稳定性大幅提升</i></p>
 <p><i>🚀 <b>性能显著优化：</b> 准确率95-98%，工具调用速度提升5-8%</i></p>
 
 </div>
+## 🔧 脚本使用指南
+
+项目提供多个脚本简化 v2.4 的安装和使用：
+
+### 📦 安装脚本
+
+| 脚本名称 | 用途 | 平台 | 说明 |
+|:---|:---|:---|:---|
+| `scripts/install_v24.ps1` | 一键安装 | Windows | 自动创建环境、安装依赖、配置系统 |
+| `scripts/install_v24.sh` | 一键安装 | Linux/macOS | 自动创建环境、安装依赖、配置系统 |
+| `scripts/verify_environment.py` | 环境验证 | 全平台 | 验证环境配置是否正确 |
+
+### 🔄 环境管理
+
+| 脚本名称 | 用途 | 平台 | 说明 |
+|:---|:---|:---|:---|
+| `scripts/switch_env.ps1` | 环境切换 | Windows | 快速切换 v24/v23 环境 |
+| `scripts/switch_env.sh` | 环境切换 | Linux/macOS | 快速切换 v24/v23 环境 |
+
+### 🚀 快速开始
+
+**Windows 用户：**
+```powershell
+# 一键安装
+.\scripts\install_v24.ps1
+
+# 或手动配置
+.\scripts\switch_env.ps1 v24
+pip install -e .
+playwright install chromium
+resume-skill doctor
+```
+
+**Linux/macOS 用户：**
+```bash
+# 一键安装
+bash scripts/install_v24.sh
+
+# 或手动配置
+source scripts/switch_env.sh v24
+pip install -e .
+playwright install chromium
+resume-skill doctor
+```
+
+### 🔍 环境验证
+
+运行环境验证脚本，确保所有依赖都正确安装：
+```bash
+python scripts/verify_environment.py
+```
+
+### 📋 脚本功能介绍
+
+#### 1. 一键安装脚本 (`install_v24.*`)
+- ✅ 自动检查并安装 Conda（如果未安装）
+- ✅ 创建专门的 v2.4 Python 3.10 + Node.js 环境
+- ✅ 安装项目依赖（Python 包 + Playwright 浏览器）
+- ✅ 测试 chrome-devtools-mcp 可用性
+- ✅ 验证安装结果并显示下一步操作
+
+#### 2. 环境切换脚本 (`switch_env.*`)
+- ✅ 创建/激活 v2.4 环境（Python 3.10+ + Node.js）
+- ✅ 创建/激活 v2.3 环境（Python 3.9）
+- ✅ 返回基础环境
+- ✅ 环境不存在时提示创建
+
+#### 3. 环境验证脚本 (`verify_environment.py`)
+- ✅ 检查 Python 3.10+ 版本
+- ✅ 检查 Node.js v18+ 版本
+- ✅ 检查 npx 可用性
+- ✅ 测试 chrome-devtools-mcp
+- ✅ 检查 Python 依赖（mcp、playwright、resume-skill）
+- ✅ 生成详细验证报告
+
+### 🚨 常见问题解决
+
+**Q: 脚本执行报错 "无法识别"？**
+```powershell
+# Windows 需要允许脚本执行
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# 或直接运行
+powershell -ExecutionPolicy Bypass -File scripts\install_v24.ps1
+```
+
+**Q: Conda 环境激活失败？**
+```bash
+# 手动激活环境
+conda activate resume-skill-v24
+
+# 或重新初始化 conda
+conda init
+```
+
+**Q: chrome-devtools-mcp 连接失败？**
+```bash
+# 测试 npx 可用性
+npx --version
+
+# 测试 chrome-devtools-mcp
+npx chrome-devtools-mcp@latest --help
+
+# 如果网络问题，使用镜像
+npx --registry https://registry.npmmirror.com chrome-devtools-mcp@latest --help
+```
+
+### 📊 环境对比表
+
+| 环境 | Python | Node.js | 支持功能 | 推荐用户 |
+|:---|:---:|:---:|:---|:---|
+| **v2.4 环境** | 3.10+ | v18+ | ✅ MCP Agent v2.4 | 新用户、需要最新功能 |
+| **v2.3 环境** | 3.9 | 不需要 | ✅ 传统自动化 | 现有用户、稳定优先 |
+| **基础环境** | 系统默认 | 系统默认 | ⚠️ 功能受限 | 开发者、测试人员 |
+
+### 💡 最佳实践
+
+1. **为每个项目创建独立环境**
+   ```bash
+   conda create -n project-name-v24 python=3.10 nodejs
+   ```
+
+2. **使用 requirements.txt 记录依赖**
+   ```bash
+   pip freeze > requirements.txt
+   ```
+
+3. **定期验证环境**
+   ```bash
+   python scripts/verify_environment.py
+   ```
+
+4. **备份配置文件**
+   ```bash
+   cp .env.example .env
+   cp config.yaml.example config.yaml
+   ```
+
+5. **使用脚本自动化**
+   ```bash
+   # 创建自动化部署脚本
+   echo "source scripts/switch_env.sh v24" > setup.sh
+   echo "pip install -e ." >> setup.sh
+   echo "playwright install chromium" >> setup.sh
+   ```
+
+### 📞 技术支持
+
+遇到问题？请：
+
+1. **查看日志**
+   ```bash
+   python scripts/verify_environment.py --verbose
+   ```
+
+2. **检查已知问题**
+   ```bash
+   # 查看项目状态
+   resume-skill doctor
+   ```
+
+3. **更新脚本**
+   ```bash
+   git pull origin main
+   ```
+
+4. **重新安装**
+   ```bash
+   conda remove -n resume-skill-v24 --all
+   bash scripts/install_v24.sh
+   ```
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE](LICENSE) 文件。

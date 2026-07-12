@@ -43,8 +43,8 @@ class AgentState:
 class MCPAgent:
     """Dual MCP Server Agent: Google Chrome DevTools + our own tools."""
 
-    def __init__(self, llm_client: BaseLLMClient | None = None, resume_from: str = ""):
-        self.chrome = ChromeDevToolsClient(headless=False)
+    def __init__(self, llm_client: BaseLLMClient | None = None, resume_from: str = "", headless: bool = False):
+        self.chrome = ChromeDevToolsClient(headless=headless)
         use_sdk = bool(CONFIG.mcp.python_path)
         self.our_client = MCPClient(
             use_mcp_sdk=use_sdk,
@@ -76,13 +76,15 @@ class MCPAgent:
 
         返回: [{uid, label, type, options}, ...]
         """
-        form_roles = {"textbox", "combobox", "textarea", "searchbox", "listbox"}
+        form_roles = {"textbox", "combobox", "textarea", "searchbox", "listbox", "checkbox", "radio"}
         type_map = {
             "combobox": "select",
             "listbox": "select",
             "textbox": "text",
             "textarea": "text",
             "searchbox": "text",
+            "checkbox": "checkbox",
+            "radio": "radio",
         }
 
         fields = []
@@ -215,8 +217,12 @@ class MCPAgent:
             print(f"{'='*50}")
 
             # 3a. 获取无障碍树
-            snapshot = self.chrome.call_tool("take_snapshot", {})
-            snapshot_str = str(snapshot)
+            try:
+                snapshot = self.chrome.call_tool("take_snapshot", {})
+                snapshot_str = str(snapshot)
+            except Exception as e:
+                print(f"[错误] take_snapshot 失败: {e}")
+                break
 
             # 3b. 解析字段
             fields = self._parse_snapshot(snapshot_str)
@@ -245,8 +251,12 @@ class MCPAgent:
 
             # 3c. LLM Q&A 获取答案
             print("[LLM] 分析字段并匹配用户档案...")
-            answers = self._answer_fields(fields)
-            print(f"[LLM] 返回 {len(answers)} 个答案")
+            try:
+                answers = self._answer_fields(fields)
+                print(f"[LLM] 返回 {len(answers)} 个答案")
+            except Exception as e:
+                print(f"[错误] LLM 问答失败: {e}")
+                break
 
             # 3d. 逐字段填充
             any_filled = False
@@ -350,7 +360,7 @@ class MCPAgent:
         return ""
 
 
-def run_agent(url: str, resume_from: str = "") -> None:
+def run_agent(url: str, resume_from: str = "", headless: bool = False) -> None:
     llm = create_llm_client()
-    agent = MCPAgent(llm_client=llm, resume_from=resume_from)
+    agent = MCPAgent(llm_client=llm, resume_from=resume_from, headless=headless)
     agent.run(url, resume_from=resume_from)
