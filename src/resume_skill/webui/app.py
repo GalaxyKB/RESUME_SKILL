@@ -227,8 +227,20 @@ def api_apply_start():
 
 # ─── 启动 ──────────────────────────────────────────────────
 
+def _safe_print(msg: str):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        safe = msg.encode("utf-8", errors="replace").decode("gbk", errors="replace")
+        print(safe)
+
+
 def run_webui(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
-    print(f"\n  🌐 RESUME_SKILL Web UI 已启动")
-    print(f"  📍 地址: http://{host}:{port}")
-    print(f"  🔑 按 Ctrl+C 停止\n")
+    _safe_print("\n  [RESUME_SKILL] Web UI started")
+    _safe_print(f"  URL: http://{host}:{port}")
+    _safe_print("  Press Ctrl+C to stop\n")
     app.run(host=host, port=port, debug=debug)
+
+
+if __name__ == "__main__":
+    run_webui()
