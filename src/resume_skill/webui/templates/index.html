@@ -207,8 +207,8 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         </div>
 
         <div v-if="!loginsStarted" class="mt-3">
-          <button class="btn btn-primary btn-lg-action" @click="startLogins" :disabled="scoutStatus.startsWith('正在')">
-            {{scoutStatus || '拉起所有公司官网进行登录'}}
+          <button class="btn btn-primary btn-lg-action" @click="startLogins" :disabled="loginsStarted">
+            拉起所有公司官网进行登录
           </button>
           <p class="text-muted small mt-1">Chrome 浏览器会自动打开，请在各公司页面完成登录/注册。</p>
         </div>

@@ -173,7 +173,7 @@ def api_scout_login():
         return jsonify({"error": "没有公司"}), 400
 
     global _chrome_instance
-    from .mcp.chrome_client import ChromeDevToolsClient
+    from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
     _chrome_instance = ChromeDevToolsClient(headless=False)
     try:
         print("[scout] 正在启动 Chrome...")
@@ -207,7 +207,7 @@ def _scout_worker(profile: dict, preferences: dict):
     def log(msg: str):
         _scout_progress["log"].append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-    from .mcp.chrome_client import ChromeDevToolsClient
+    from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
     chrome = ChromeDevToolsClient(headless=False)
 
     try:
@@ -290,7 +290,7 @@ def api_apply_start():
         return jsonify({"error": "请提供至少一个投递链接"}), 400
 
     def _worker(target_urls: list[str]):
-        from .mcp.agent import run_agent
+        from resume_skill.agent.mcp.agent import run_agent
         for u in target_urls:
             try:
                 run_agent(u)
