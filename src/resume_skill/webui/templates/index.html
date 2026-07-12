@@ -67,11 +67,11 @@ body{background:#f4f6f9;font-size:14px;color:#333}
       <div class="step-line"></div>
     </div>
     <div class="step-item" :class="{active:step===4,done:step>4}">
-      <div class="circle">4</div><div class="label">网申填写</div>
+      <div class="circle">4</div><div class="label">岗位勘探</div>
       <div class="step-line"></div>
     </div>
     <div class="step-item" :class="{active:step===5,done:step>5}">
-      <div class="circle">5</div><div class="label">岗位勘探</div>
+      <div class="circle">5</div><div class="label">网申填写</div>
       <div class="step-line"></div>
     </div>
     <div class="step-item" :class="{active:step===6,done:step>6}">
@@ -194,24 +194,20 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         <span v-if="prefsSaved" class="ml-2 text-success">已保存</span>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=4">下一步 → 网申填写</button>
+    <button class="btn btn-success btn-lg-action float-right" @click="step=4">下一步 → 岗位勘探</button>
   </div>
 
-  <!-- Step 4: Form Filling ------------------------------------------------------->
-  <div v-if="step===4">
+  <!-- Step 5: Form Filling ------------------------------------------------------->
+  <div v-if="step===5">
     <div class="card">
-      <div class="card-header">第 4 步 — 测试网申填写</div>
+      <div class="card-header">第 5 步 — AI 智能填写</div>
       <div class="card-body">
-        <p class="text-muted">输入一个招聘投递页面 URL，AI 将自动识别字段并用你的档案填写。上传简历 PDF 用于文件上传类字段。</p>
-        <div class="form-group">
-          <label>投递页面 URL</label>
-          <input class="form-control" v-model="fillUrl" placeholder="https://example.com/apply/123">
-        </div>
+        <p class="text-muted">在已经打开的 Chrome 浏览器中，手动导航到需要填写的投递页面，然后点击下方按钮让 AI 自动识别并填写。</p>
         <div class="form-group">
           <label>简历 PDF（用于上传附件）</label>
           <input type="file" class="form-control-file" @change="onFillFileChange">
         </div>
-        <button class="btn btn-primary btn-lg-action" @click="startFill" :disabled="filling || !fillUrl">
+        <button class="btn btn-primary btn-lg-action" @click="startFill" :disabled="filling">
           {{filling ? '填写中...' : '🤖 AI 智能填写'}}
         </button>
         <div v-if="filling" class="progress mt-2" style="height:6px">
@@ -219,7 +215,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         </div>
         <div v-if="fillError" class="alert alert-danger mt-2 py-2">{{fillError}}</div>
         <div v-if="fillFields.length" class="mt-3">
-          <h6>填写结果（可编辑修改）</h6>
+          <h6>填写结果（可直接编辑修改）</h6>
           <div v-for="(f,i) in fillFields" :key="i" class="border rounded p-2 mb-2 bg-light">
             <div class="d-flex justify-content-between">
               <span class="font-weight-bold">{{f.label}}</span>
@@ -227,20 +223,20 @@ body{background:#f4f6f9;font-size:14px;color:#333}
                 {{f.action==='manual' ? '需手动' : f.confidence || 'auto'}}
               </span>
             </div>
-            <input class="form-control mt-1" v-model="f.answer" :disabled="f.action==='manual'">
+            <input class="form-control mt-1" v-model="f.answer" :disabled="f.action==='manual' || false">
             <small v-if="f.action==='manual'" class="text-warning">敏感字段，请手动填写</small>
           </div>
-          <button class="btn btn-success" @click="saveFillResult">保存填写结果</button>
+          <button class="btn btn-success mt-2" @click="saveFillResult">保存结果</button>
         </div>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=5">下一步 → 岗位勘探</button>
+    <button class="btn btn-success btn-lg-action float-right" @click="step=6">下一步 → 批量投递</button>
   </div>
 
   <!-- Step 5: Scout ------------------------------------------------------------->
   <div v-if="step===5">
     <div class="card" v-if="prefs.target_companies.length">
-      <div class="card-header">第 5 步 — 批量登录 &amp; 岗位勘探</div>
+      <div class="card-header">第 4 步 — 批量登录 &amp; 岗位勘探</div>
       <div class="card-body">
         <h6 class="text-muted mb-3">需登录的招聘官网</h6>
         <div v-for="(c,i) in prefs.target_companies" :key="i" class="d-flex align-items-center border rounded p-2 mb-1 bg-light">
@@ -300,13 +296,13 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         <p class="text-muted">请先在上一页添加目标公司。</p>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right mt-2" @click="step=6">下一步 → 批量投递</button>
+    <button class="btn btn-success btn-lg-action float-right mt-2" @click="step=5">下一步 → 网申填写</button>
   </div>
 
   <!-- Step 6: Apply ------------------------------------------------------------->
   <div v-if="step===6">
     <div class="card">
-      <div class="card-header">第 5 步 — 批量投递</div>
+      <div class="card-header">第 6 步 — 批量投递</div>
       <div class="card-body">
         <div v-if="applyList.length===0" class="text-muted mb-2">从勘探结果添加岗位到投递列表</div>
         <div v-for="(item,i) in applyList" :key="i" class="d-flex justify-content-between align-items-center border rounded p-2 mb-1">
@@ -336,8 +332,8 @@ new Vue({
     // Step 3
     prefs:{personal_info:{base_city:'',job_type:'校招',preferred_industries:[]},target_companies:[]},
     newCompanyName:'',newCompanyUrl:'',savingPrefs:false,prefsSaved:false,
-    // Step 4 (Form Filling)
-    fillUrl:'',fillPdfFile:null,filling:false,fillError:'',fillFields:[],fillResult:null,
+    // Step 5 (Form Filling)
+    fillPdfFile:null,filling:false,fillError:'',fillFields:[],fillResult:null,
     // Step 5 (Scout)
     loginsStarted:false,loginsConfirmed:false,loginDone:[],confirming:false,scoutStatus:'',
     scoutRunning:false,scoutLog:[],scoutResults:[],pollTimer:null,
@@ -383,11 +379,11 @@ new Vue({
     addCompany(){if(!this.newCompanyName.trim()||!this.newCompanyUrl.trim())return;this.prefs.target_companies.push({name:this.newCompanyName.trim(),url:this.newCompanyUrl.trim()});this.newCompanyName='';this.newCompanyUrl=''},
     removeCompany(i){this.prefs.target_companies.splice(i,1)},
     async savePreferences(){this.savingPrefs=true;this.prefsSaved=false;try{await fetch('/api/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.prefs)});this.prefsSaved=true}catch(e){}this.savingPrefs=false},
-    // Step 4 (Form Filling)
+    // Step 5 (Form Filling)
     onFillFileChange(e){this.fillPdfFile=e.target.files[0]||null},
     async startFill(){
-      if(!this.fillUrl)return;this.fillFields=[];this.fillError='';this.filling=true;
-      const fd=new FormData();fd.append('url',this.fillUrl);
+      this.fillFields=[];this.fillError='';this.filling=true;
+      const fd=new FormData();
       if(this.fillPdfFile)fd.append('resume',this.fillPdfFile);
       try{
         const r=await fetch('/api/fill/start',{method:'POST',body:fd});

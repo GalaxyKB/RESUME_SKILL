@@ -200,13 +200,11 @@ def api_scout_login():
 
 @app.route("/api/fill/start", methods=["POST"])
 def api_fill_start():
-    """Open application URL, snapshot, LLM Q&A match, return filled fields."""
-    url = request.form.get("url", "")
-    if not url:
-        return jsonify({"error": "请提供投递页面 URL"}), 400
+    """Use the already-open Chrome (from scout login) to snapshot current page
+    and AI-fill form fields. User should have manually navigated to the app page."""
+    global _chrome_instance
 
-    from .mcp.chrome_client import ChromeDevToolsClient
-    from ..agent.mcp.agent import MCPAgent
+    from resume_skill.agent.mcp.agent import MCPAgent
     import tempfile, os
 
     # Save uploaded resume if provided
@@ -217,17 +215,15 @@ def api_fill_start():
         f.save(tmp.name)
         resume_path = tmp.name
 
-    try:
-        chrome = ChromeDevToolsClient(headless=False)
-        chrome.connect()
-        chrome.call_tool("navigate_page", {"url": url})
-        import time; time.sleep(2)
+    chrome = _chrome_instance
+    if chrome is None:
+        return jsonify({"error": "请先在步骤4中拉起 Chrome 并登录"}), 400
 
+    try:
         snapshot = chrome.call_tool("take_snapshot", {})
         print(f"[fill] Snapshot: {len(str(snapshot))} chars")
 
         # Parse snapshot to fields using the same logic as agent.py
-        from resume_skill.agent.mcp.agent import MCPAgent
         agent = MCPAgent.__new__(MCPAgent)
         fields = agent._parse_snapshot(str(snapshot))
         print(f"[fill] Found {len(fields)} form fields")
@@ -236,8 +232,9 @@ def api_fill_start():
         md_path = CONFIG.personal_info_dir / "profile_template.md"
         profile_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
         if profile_text:
+            from ..llm.factory import create_llm_client
             agent.profile = profile_text
-            agent.llm = __import__("resume_skill.llm.factory", fromlist=["create_llm_client"]).create_llm_client()
+            agent.llm = create_llm_client()
             answers = agent._answer_fields(fields)
             print(f"[fill] Got {len(answers)} LLM answers")
 
@@ -251,7 +248,6 @@ def api_fill_start():
                     f["confidence"] = ans.get("confidence", "low")
                     f["action"] = ans.get("action", "fill")
 
-        chrome.close()
         if resume_path:
             os.unlink(resume_path)
 
@@ -259,11 +255,6 @@ def api_fill_start():
 
     except Exception as e:
         import traceback; traceback.print_exc()
-        try: chrome.close()
-        except: pass
-        if resume_path:
-            try: os.unlink(resume_path)
-            except: pass
         return jsonify({"error": str(e)}), 500
 
 
