@@ -173,29 +173,27 @@ def api_scout_login():
         return jsonify({"error": "没有公司"}), 400
 
     global _chrome_instance
-    def _open_all():
-        global _chrome_instance
-        from .mcp.chrome_client import ChromeDevToolsClient
-        _chrome_instance = ChromeDevToolsClient(headless=False)
-        try:
-            _chrome_instance.connect()
-            for i, c in enumerate(companies):
-                name = c.get("name", "?")
-                url = c.get("url", "")
-                if not url:
-                    continue
-                if i == 0:
-                    _chrome_instance.call_tool("navigate_page", {"url": url})
-                else:
-                    _chrome_instance.call_tool("new_page", {"url": url})
-                print(f"[scout] 已打开 {name}: {url}")
-        except Exception as e:
-            print(f"[scout] 打开页面失败: {e}")
-
-    # Start Chrome in a daemon thread
-    thread = threading.Thread(target=_open_all, daemon=True)
-    thread.start()
-    return jsonify({"status": "opened", "count": len(companies)})
+    from .mcp.chrome_client import ChromeDevToolsClient
+    _chrome_instance = ChromeDevToolsClient(headless=False)
+    try:
+        print("[scout] 正在启动 Chrome...")
+        _chrome_instance.connect()
+        print(f"[scout] Chrome 已启动，正在打开 {len(companies)} 个页面...")
+        for i, c in enumerate(companies):
+            name = c.get("name", "?")
+            url = c.get("url", "")
+            if not url:
+                continue
+            if i == 0:
+                _chrome_instance.call_tool("navigate_page", {"url": url})
+            else:
+                _chrome_instance.call_tool("new_page", {"url": url})
+            print(f"[scout] 已打开 {name}: {url}")
+        return jsonify({"status": "opened", "count": len(companies)})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"打开 Chrome 失败: {str(e)}"}), 500
 
 
 # ─── 勘探（Scout）API ─────────────────────────────────────
