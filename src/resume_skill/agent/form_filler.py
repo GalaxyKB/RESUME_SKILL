@@ -10,6 +10,10 @@ Key improvements over v1:
 - Per-field retry with different strategies
 """
 
+# DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead.
+# This file is kept for backward compatibility with the old workflow.py flow.
+# Will be removed in v3.0.
+
 from __future__ import annotations
 
 from pathlib import Path

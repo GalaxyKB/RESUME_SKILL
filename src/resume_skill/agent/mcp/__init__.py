@@ -1,13 +1,8 @@
-"""MCP (Model Context Protocol) server and client for browser automation."""
+"""
+MCP module - v2.4 uses dual MCP servers (ours + Google Chrome DevTools).
+"""
 
 from .client import MCPClient
-from .server import TOOL_HELP
+from .chrome_client import ChromeDevToolsClient
 
-try:
-    # server_mcp.py 需要 mcp SDK，可能在旧环境不可用
-    from . import server_mcp
-    _mcp_sdk_available = True
-except ImportError:
-    _mcp_sdk_available = False
-
-__all__ = ["MCPClient", "TOOL_HELP", "_mcp_sdk_available"]
+__all__ = ["MCPClient", "ChromeDevToolsClient"]

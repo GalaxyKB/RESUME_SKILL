@@ -1,14 +1,13 @@
 """
-LLM Agent: decision loop that replaces hardcoded workflow.py.
+LLM Agent v2.4: dual MCP server (ours + Google Chrome DevTools).
 
-The Agent receives a list of available MCP tools and uses LLM function
-calls to decide which tool to invoke at each step.
+Flow: take_snapshot → parse fields → LLM Q&A → fill loop.
 """
 
 from __future__ import annotations
 
 import json
-import sys
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,8 +15,9 @@ from ...llm.factory import create_llm_client
 from ...llm.base import BaseLLMClient
 from ...config import CONFIG
 from .client import MCPClient
-from ..utils import load_yaml, print_section, console
+from .chrome_client import ChromeDevToolsClient
 from .recorder import AgentRecorder
+from ..utils import load_yaml, print_section, console
 
 
 @dataclass
@@ -27,109 +27,33 @@ class AgentState:
     field_count: int = 0
     filled_fields: list[dict] = field(default_factory=list)
     failed_fields: list[dict] = field(default_factory=list)
-    verified_fields: list[dict] = field(default_factory=list)
-    last_error: str = ""
-    max_steps: int = 30
-    consecutive_no_progress: int = 0
-    
+    max_steps: int = 10
+
     def to_prompt(self) -> str:
-        return json.dumps({
-            "当前步骤": self.step,
-            "页面URL": self.page_url,
-            "已提取字段数": self.field_count,
-            "已填充字段": [f["field_id"] for f in self.filled_fields],
-            "填充失败字段": [f["field_id"] for f in self.failed_fields],
-            "最后错误": self.last_error,
-        }, ensure_ascii=False)
-
-
-SYSTEM_PROMPT = """你是一个网申表单自动填充 Agent。
-
-## 可用工具
-{tool_descriptions}
-
-## 用户数据
-{profile_json}
-
-## 推荐工作流程
-1. browser_start → browser_navigate → wait_for_user（等待用户登录）
-2. get_page_text（分析页面内容）
-3. extract_fields（提取表单字段）
-4. match_fields(fields_json, profile_json)（匹配字段与用户档案，得到填充计划）
-5. 根据match_fields的结果，使用fill_field逐个填充字段
-6. 使用verify_field验证已填充的字段
-7. find_and_click提交表单
-8. browser_close关闭浏览器
-
-## 规则
-- 每一步输出一个 JSON，格式：{{"tool": "tool_name", "params": {{...}}, "reason": "为什么"}}
-- 如果所有步骤完成，输出：{{"tool": "done", "params": {{}}, "reason": "全部完成"}}
-- 如果遇到需要用户手动处理的情况，输出：{{"tool": "wait_for_user", "params": {{"message": "提示内容"}}, "reason": "..."}}
-- 优先使用match_fields工具进行字段匹配，而不是自己猜测如何填充
-
-## 已执行的步骤
-{history}
-
-请决定下一步操作。只输出 JSON，不要输出其他内容。"""
-
-
-def _build_tool_descriptions() -> str:
-    from .server import TOOL_HELP
-    lines = []
-    for name, info in TOOL_HELP.items():
-        params_desc = []
-        for pname, pinfo in info.get("params", {}).items():
-            required = "default" not in pinfo
-            default_str = f" (默认: {pinfo.get('default')})" if "default" in pinfo else ""
-            params_desc.append(f"    - {pname}: {pinfo.get('description', '')}{' [必填]' if required else default_str}")
-        params_str = "\n".join(params_desc)
-        lines.append(f"- {name}: {info.get('description', '')}\n{params_str}")
-    return "\n".join(lines)
+        return json.dumps(
+            {
+                "当前步骤": self.step,
+                "已填充字段": [f.get("uid", "") for f in self.filled_fields],
+                "失败字段": [f.get("uid", "") for f in self.failed_fields],
+            },
+            ensure_ascii=False,
+        )
 
 
 class MCPAgent:
+    """Dual MCP Server Agent: Google Chrome DevTools + our own tools."""
+
     def __init__(self, llm_client: BaseLLMClient | None = None, resume_from: str = ""):
-        # 如果配置了 MCP_PYTHON_PATH，则自动使用 MCP SDK 模式
+        self.chrome = ChromeDevToolsClient(headless=False)
         use_sdk = bool(CONFIG.mcp.python_path)
-        self.client = MCPClient(
+        self.our_client = MCPClient(
             use_mcp_sdk=use_sdk,
-            mcp_python_path=CONFIG.mcp.python_path
+            mcp_python_path=CONFIG.mcp.python_path,
         )
         self.llm = llm_client or create_llm_client()
         self.profile: dict[str, Any] = {}
         self.recorder = AgentRecorder()
         self._resume_from = resume_from
-
-    def _build_tools_for_api(self) -> list[dict]:
-        """将 TOOL_HELP 转换为 LLM API 兼容的 tools 格式。"""
-        from .server import TOOL_HELP
-        
-        tools = []
-        for name, info in TOOL_HELP.items():
-            params = info.get("params", {})
-            properties = {}
-            required = []
-            
-            for pname, pinfo in params.items():
-                ptype = pinfo.get("type", "string")
-                schema_type = "array" if ptype == "array" else "object" if ptype == "object" else "string"
-                properties[pname] = {
-                    "type": schema_type,
-                    "description": pinfo.get("description", ""),
-                }
-                if "default" not in pinfo:
-                    required.append(pname)
-            
-            tools.append({
-                "name": name,
-                "description": info.get("description", ""),
-                "inputSchema": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": required,
-                },
-            })
-        return tools
 
     def _load_profile(self) -> dict[str, Any]:
         profile_path = CONFIG.unified_profile_path
@@ -138,294 +62,292 @@ class MCPAgent:
         print(f"Profile not found at {profile_path}")
         return {}
 
+    # ─── snapshot 解析 ──────────────────────────────────
+
+    def _parse_snapshot(self, snapshot_text: str) -> list[dict]:
+        """
+        解析 chrome-devtools-mcp 的 take_snapshot 返回的无障碍树文本，提取表单字段列表。
+
+        take_snapshot 返回的文本格式示例:
+            textbox "姓名" uid=1_5
+            textbox "邮箱" uid=1_6  
+            combobox "学历" uid=1_7 options="本科,硕士,博士"
+            button "提交" uid=1_8
+
+        返回: [{uid, label, type, options}, ...]
+        """
+        form_roles = {"textbox", "combobox", "textarea", "searchbox", "listbox"}
+        type_map = {
+            "combobox": "select",
+            "listbox": "select",
+            "textbox": "text",
+            "textarea": "text",
+            "searchbox": "text",
+        }
+
+        fields = []
+        for line in snapshot_text.split("\n"):
+            line = line.strip()
+            # 匹配: role "label" uid=xxx
+            m = re.match(r'(\w+)\s+"([^"]*)"\s+uid=([\w_]+)', line)
+            if not m:
+                continue
+            role, label, uid = m.group(1), m.group(2), m.group(3)
+
+            if role not in form_roles:
+                continue
+
+            # 提取 options（combobox 可能有 options="a,b,c"）
+            options = []
+            om = re.search(r'options="([^"]*)"', line)
+            if om:
+                options = [o.strip() for o in om.group(1).split(",") if o.strip()]
+
+            fields.append(
+                {
+                    "uid": uid,
+                    "label": label,
+                    "type": type_map.get(role, "text"),
+                    "options": options,
+                }
+            )
+
+        return fields
+
+    def _find_submit_uid(self, snapshot_text: str) -> str:
+        """在无障碍树中找到提交按钮的 uid。"""
+        keywords = ["提交", "投递", "Submit", "submit", "Apply", "apply"]
+        for line in snapshot_text.split("\n"):
+            line_lower = line.lower()
+            for kw in keywords:
+                if kw.lower() in line_lower:
+                    m = re.search(r"uid=([\w_]+)", line)
+                    if m:
+                        return m.group(1)
+        return ""
+
+    # ─── LLM Q&A 匹配 ──────────────────────────────────
+
+    def _answer_fields(self, fields: list[dict]) -> list[dict]:
+        """
+        将表单字段列表 + 用户档案打包成一个 LLM 调用，LLM 以 Q&A 方式回答每个字段应填什么。
+
+        返回: [{uid, answer, confidence, action}, ...]
+        """
+        profile_json = json.dumps(self.profile, ensure_ascii=False, indent=2)
+        fields_json = json.dumps(fields, ensure_ascii=False, indent=2)
+
+        prompt = f"""
+你是一个表单填充助手。根据用户档案，回答每个字段应该填什么。
+
+## 规则
+- 如果档案中有对应信息，填写准确值，confidence 为 "high"
+- 如果档案中间接相关（如"毕业院校"与档案中的 school 相关），填写并标注 confidence 为 "medium"
+- 如果档案中完全没有相关信息，answer 填 "未提供"，confidence 为 "low"
+- 对于下拉选择字段，从 options 中选最匹配的选项；如果选项中没有精确匹配，选最接近的
+- 敏感字段（身份证号、政治面貌、银行卡号、家庭住址、护照号等）标记 action 为 "manual"
+- 正常字段标记 action 为 "fill"
+
+## 用户档案
+{profile_json}
+
+## 表单字段
+{fields_json}
+
+返回纯 JSON（不要 markdown 代码块），格式：
+{{"answers": [{{"uid": "...", "answer": "...", "confidence": "high/medium/low", "action": "fill/manual"}}]}}
+"""
+        result = self.llm.call_json("", prompt)
+        if isinstance(result, dict) and "answers" in result:
+            return result["answers"]
+        return []
+
+    # ─── 主流程 ─────────────────────────────────────────
+
     def run(self, url: str, resume_from: str = "") -> None:
-        print_section("MCP Agent - 智能填充流程")
-        self._url = url
+        print_section("MCP Agent v2.4 - 智能填充流程")
+
         self.profile = self._load_profile()
         if not self.profile:
-            console.print("[red]❌ 未找到用户档案，请先运行 resume-skill consolidate[/]")
+            console.print("[red]找不到用户档案，请先运行 resume-skill consolidate[/]")
             return
 
-        tool_desc = _build_tool_descriptions()
-        self.client.connect()
-        
-        # 恢复 checkpoint 或初始化
-        if resume_from:
-            # 恢复 checkpoint
-            checkpoint = self._load_checkpoint(resume_from)
-            state = AgentState(**checkpoint["state"])
-            history = checkpoint.get("history", [])
-            deterministic_done = checkpoint.get("deterministic_done", [])
-            console.print(f"[yellow]从 checkpoint 恢复: 已完成 {len(deterministic_done)} 个确定性步骤[/]")
-        else:
-            state = AgentState()
-            history = []
-            deterministic_done = []
+        # 连接双 MCP Server
+        self.chrome.connect()
+        self.our_client.connect()
 
-        # Initial deterministic steps (no LLM needed)
-        # 第一步：browser_start
-        if "browser_start" not in deterministic_done:
-            print("[Step 0] 启动浏览器...")
-            browser_start_result = self.client.call_tool("browser_start", {"session_dir": str(CONFIG.session_dir)})
-            self.recorder.record(step=0, phase="deterministic", tool="browser_start",
-                                params={"session_dir": str(CONFIG.session_dir)},
-                                result=browser_start_result, state_before="",
-                                llm_reason="")
-            history.append("browser_start: 启动浏览器")
-            deterministic_done.append("browser_start")
-            ckpt_path = self._save_checkpoint(state, history, deterministic_done)
-            print(f"  Checkpoint 已保存: {ckpt_path}")
-        else:
-            print("[Step 0] 跳过 browser_start（已从 checkpoint 恢复）")
-        
-        # 第二步：browser_navigate
-        if "browser_navigate" not in deterministic_done:
-            print("[Step 1] 导航到目标页面...")
-            browser_navigate_result = self.client.call_tool("browser_navigate", {"url": url})
-            self.recorder.record(step=1, phase="deterministic", tool="browser_navigate",
-                                params={"url": url},
-                                result=browser_navigate_result, state_before="",
-                                llm_reason="")
-            history.append(f"browser_navigate: 导航到 {url}")
-            deterministic_done.append("browser_navigate")
-            ckpt_path = self._save_checkpoint(state, history, deterministic_done)
-            print(f"  Checkpoint 已保存: {ckpt_path}")
-        else:
-            print("[Step 1] 跳过 browser_navigate（已从 checkpoint 恢复）")
-        
-        # 第三步：wait_for_user
-        if "wait_for_user" not in deterministic_done:
-            print("[Step 2] 等待用户登录...")
-            wait_result = self.client.call_tool("wait_for_user", {"message": "请在浏览器中完成登录后按 Enter 继续..."})
-            self.recorder.record(step=2, phase="deterministic", tool="wait_for_user",
-                                params={"message": "请在浏览器中完成登录后按 Enter 继续..."},
-                                result=wait_result, state_before="",
-                                llm_reason="")
-            history.append("wait_for_user: 等待用户登录")
-            deterministic_done.append("wait_for_user")
-            ckpt_path = self._save_checkpoint(state, history, deterministic_done)
-            print(f"  Checkpoint 已保存: {ckpt_path}")
-        else:
-            print("[Step 2] 跳过 wait_for_user（已从 checkpoint 恢复）")
+        state = AgentState()
 
-        # Agent loop with state management
+        # ===== Step 1: 打开页面 =====
+        print("[Step 1] 打开招聘页面...")
+        self.chrome.call_tool("navigate_page", {"url": url})
+        self.recorder.record(
+            step=1,
+            phase="deterministic",
+            tool="navigate_page",
+            params={"url": url},
+            result={"status": "navigated"},
+            state_before="",
+            llm_reason="",
+        )
+
+        # ===== Step 2: 等用户登录 =====
+        print("[Step 2] 等待用户手动登录...")
+        self.our_client.call_tool(
+            "wait_for_user",
+            {"message": "请在浏览器中完成登录后按 Enter 继续..."},
+        )
+        self.recorder.record(
+            step=2,
+            phase="deterministic",
+            tool="wait_for_user",
+            params={},
+            result={"status": "continue"},
+            state_before="",
+            llm_reason="",
+        )
+
+        # ===== Step 3-N: 多页循环 =====
         while state.step < state.max_steps:
             state.step += 1
-            print(f"\n--- Step {state.step} ---")
+            print(f"\n{'='*50}")
+            print(f"Round {state.step}")
+            print(f"{'='*50}")
 
-            # Update state
-            try:
-                page_text = self.client.call_tool("get_page_text", {})
-                state.page_url = self._get_current_url()
-            except Exception as e:
-                state.last_error = str(e)
-                print(f"⚠️ 状态更新失败: {e}")
+            # 3a. 获取无障碍树
+            snapshot = self.chrome.call_tool("take_snapshot", {})
+            snapshot_str = str(snapshot)
 
-            # Build system prompt with history and state
-            history_text = "\n".join([f"- {h}" for h in history[-10:]])  # Last 10 steps
-            system_prompt = SYSTEM_PROMPT.format(
-                tool_descriptions=tool_desc,
-                profile_json=json.dumps(self.profile, ensure_ascii=False, indent=2),
-                history=history_text
-            )
-            
-            # Build user prompt with current state
-            user_prompt = f"当前状态:\n{state.to_prompt()}\n\n请决定下一步操作。"
+            # 3b. 解析字段
+            fields = self._parse_snapshot(snapshot_str)
+            state.field_count = len(fields)
+            print(f"[解析] 检测到 {len(fields)} 个表单字段")
 
-            # 保存执行前的状态
-            state_before = state.to_prompt()
-
-            # Call LLM
-            # 构建工具列表
-            tools = self._build_tools_for_api()
-            
-            if hasattr(self.llm, 'call_with_tools') and getattr(self.llm, 'supports_function_calling', False):
-                # 原生 function calling 模式
-                llm_result = self.llm.call_with_tools(
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    tools=tools,
-                )
-                
-                if isinstance(llm_result, list):
-                    # LLM 返回了工具调用
-                    tool_name = llm_result[0]["name"]
-                    params = llm_result[0].get("arguments", {})
-                    reason = ""
-                    tool_call = (tool_name, params)
-                elif isinstance(llm_result, str):
-                    # LLM 直接回复文本
-                    print(f"[LLM] {llm_result[:200]}...")
-                    if "done" in llm_result.strip().lower():
-                        console.print("[green]✅ LLM判断任务完成[/]")
-                        break
-                    tool_call = None
-                else:
-                    tool_call = None
-            else:
-                # 回退：call_json + 解析
-                response = self.llm.call_json(system_prompt, user_prompt)
-                print(f"[LLM] {str(response)[:200]}...")
-                reason = response.get("reason", "") if isinstance(response, dict) else ""
-                tool_call = self._parse_tool_call(response)
-
-            # 解析 tool call（与原逻辑一致）
-            if tool_call is None:
-                console.print("[yellow]⚠️ LLM 返回格式无法解析[/]")
-                state.last_error = "JSON解析失败"
-                state.consecutive_no_progress += 1
-                if state.consecutive_no_progress >= 3:
-                    console.print("[red]连续3步无进展，终止[/]")
+            if not fields:
+                print("[判断] 当前页面没有表单字段，可能已是最后一页")
+                submit_uid = self._find_submit_uid(snapshot_str)
+                if submit_uid:
+                    print(f"[提交] 点击提交按钮 uid={submit_uid}")
+                    try:
+                        self.chrome.call_tool("click", {"uid": submit_uid})
+                        self.recorder.record(
+                            step=state.step,
+                            phase="agent",
+                            tool="click",
+                            params={"uid": submit_uid},
+                            result={"status": "clicked"},
+                            state_before=state.to_prompt(),
+                            llm_reason="点击提交按钮",
+                        )
+                    except Exception as e:
+                        print(f"[错误] 提交失败: {e}")
                     break
-                continue
 
-            tool_name, params = tool_call
-            
-            # Handle special tools
-            if tool_name == "done":
-                console.print("[green]✅ LLM判断任务完成[/]")
+            # 3c. LLM Q&A 获取答案
+            print("[LLM] 分析字段并匹配用户档案...")
+            answers = self._answer_fields(fields)
+            print(f"[LLM] 返回 {len(answers)} 个答案")
+
+            # 3d. 逐字段填充
+            any_filled = False
+            for ans in answers:
+                uid = ans.get("uid", "")
+                action = ans.get("action", "fill")
+                answer = ans.get("answer", "")
+                confidence = ans.get("confidence", "low")
+
+                if action == "manual":
+                    state.failed_fields.append(
+                        {
+                            "uid": uid,
+                            "reason": f"敏感字段 ({answer})",
+                        }
+                    )
+                    print(f"  ⚠️ {uid}: 敏感字段，跳过 ({answer})")
+                    continue
+
+                if not answer or answer == "未提供":
+                    print(f"  ⊘ {uid}: 未找到匹配数据，跳过")
+                    continue
+
+                if confidence == "low":
+                    print(f"  ⚠️ {uid}: 低置信度 ({answer[:30]})，跳过")
+                    continue
+
+                try:
+                    print(f"  → fill uid={uid} = {answer[:40]} [{confidence}]")
+                    self.chrome.call_tool("fill", {"uid": uid, "value": answer})
+                    any_filled = True
+                    state.filled_fields.append({"uid": uid, "answer": answer})
+                    self.recorder.record(
+                        step=state.step,
+                        phase="agent",
+                        tool="fill",
+                        params={"uid": uid, "value": answer},
+                        result={"status": "filled"},
+                        state_before=state.to_prompt(),
+                        llm_reason=confidence,
+                    )
+                except Exception as e:
+                    print(f"  ❌ {uid} 填充失败: {e}")
+                    state.failed_fields.append({"uid": uid, "error": str(e)})
+                    self.recorder.record(
+                        step=state.step,
+                        phase="agent",
+                        tool="fill",
+                        params={"uid": uid, "value": answer},
+                        result={"status": "failed"},
+                        state_before=state.to_prompt(),
+                        llm_reason=confidence,
+                        error=str(e),
+                    )
+
+            if not any_filled:
+                print("[警告] 本轮没有成功填充任何字段，可能所有字段都未匹配或置信度低")
                 break
-                
-            if tool_name == "wait_for_user":
-                print(f"[等待用户] {params.get('message', '请操作后继续...')}")
-                wait_result = self.client.call_tool("wait_for_user", params)
-                # 记录等待用户步骤
-                self.recorder.record(step=state.step, phase="agent", tool=tool_name,
-                                    params=params, result=wait_result,
-                                    state_before=state_before, llm_reason=reason)
-                history.append(f"wait_for_user: {params.get('message', '等待用户操作')}")
-                continue
 
-            # Execute tool
-            try:
-                result = self.client.call_tool(tool_name, params)
-                print(f"  → {tool_name} 返回: {json.dumps(result, ensure_ascii=False)[:200]}")
-                
-                # 记录成功的工具执行
-                self.recorder.record(step=state.step, phase="agent", tool=tool_name,
-                                    params=params, result=result,
-                                    state_before=state_before, llm_reason=reason)
-                
-                # Update state based on result
-                self._update_state(state, tool_name, params, result)
-                history.append(f"{tool_name}: {params} → {result.get('status', 'unknown')}")
-                state.consecutive_no_progress = 0  # Reset on success
-                
-                # 每 3 步保存一次 checkpoint
-                if state.step % 3 == 0:
-                    ckpt_path = self._save_checkpoint(state, history, deterministic_done)
-                    print(f"  Checkpoint 已保存: {ckpt_path}")
-                
-            except Exception as e:
-                print(f"  → {tool_name} 失败: {e}")
-                state.last_error = str(e)
-                state.consecutive_no_progress += 1
-                # 记录失败的工具执行
-                self.recorder.record(step=state.step, phase="agent", tool=tool_name,
-                                    params=params, result={},
-                                    state_before=state_before, llm_reason=reason, error=str(e))
-                history.append(f"{tool_name}: {params} → 失败: {e}")
-                
-                # Check for no progress
-                if state.consecutive_no_progress >= 5:
-                    console.print("[red]连续5步无进展，终止[/]")
+            # 3e. 尝试点击"下一步"按钮（翻页）
+            next_uid = self._find_next_uid(snapshot_str)
+            if next_uid:
+                print(f"[翻页] 点击下一步按钮 uid={next_uid}")
+                try:
+                    self.chrome.call_tool("click", {"uid": next_uid})
+                except Exception as e:
+                    print(f"[翻页] 失败: {e}")
+                    break
+            else:
+                print("[判断] 没有检测到下一步按钮，当前页可能已是最后一页")
+                # 尝试提交
+                submit_uid = self._find_submit_uid(snapshot_str)
+                if submit_uid:
+                    print(f"[提交] 点击提交按钮 uid={submit_uid}")
+                    self.chrome.call_tool("click", {"uid": submit_uid})
                     break
 
-        # 保存 agent 报告
-        from ..utils import timestamp
+        # ===== 结束 =====
         report_dir = CONFIG.outputs_dir / "mcp_agent"
         report_dir.mkdir(parents=True, exist_ok=True)
+        from ..utils import timestamp
+
         report_path = self.recorder.save(report_dir / f"{timestamp()}_agent_report.json")
-        print(f"Agent 报告已保存: {report_path}")
+        print(f"\n[报告] 已保存: {report_path}")
         print(self.recorder.summary())
 
-        self.client.close()
-        console.print("[green]✅ 填充流程完成[/]")
+        self.chrome.close()
+        self.our_client.close()
+        console.print("[green]流程完成[/]")
 
-    def _get_current_url(self) -> str:
-        """Get current page URL (helper method)."""
-        try:
-            result = self.client.call_tool("get_current_url", {})
-            return result.get("url", "")
-        except:
-            return ""
-
-    def _update_state(self, state: AgentState, tool_name: str, params: dict, result: dict) -> None:
-        """Update agent state based on tool result."""
-        if tool_name == "fill_field":
-            if result.get("status") in ["filled", "verified"]:
-                field_info = {
-                    "field_id": params.get("field_id", ""),
-                    "field_label": params.get("field_label", ""),
-                    "status": result.get("status")
-                }
-                state.filled_fields.append(field_info)
-            elif result.get("status") in ["failed", "error"]:
-                field_info = {
-                    "field_id": params.get("field_id", ""),
-                    "field_label": params.get("field_label", ""),
-                    "error": result.get("error", "")
-                }
-                state.failed_fields.append(field_info)
-        elif tool_name == "extract_fields":
-            # Update field count when extract_fields is called
-            state.field_count = result.get("count", 0)
-        elif tool_name == "verify_field":
-            if result.get("verified"):
-                field_info = {
-                    "field_id": params.get("field_id", ""),
-                    "field_label": params.get("field_label", ""),
-                    "verified": True
-                }
-                state.verified_fields.append(field_info)
-
-    def _save_checkpoint(self, state: AgentState, history: list[str],
-                        deterministic_done: list[str]) -> Path:
-        """保存当前进度到 checkpoint 文件。"""
-        from ..utils import timestamp
-        
-        data = {
-            "version": 1,
-            "url": self._url,
-            "session_dir": str(CONFIG.session_dir),
-            "deterministic_done": deterministic_done,
-            "state": {
-                "step": state.step,
-                "page_url": state.page_url,
-                "field_count": state.field_count,
-                "filled_fields": state.filled_fields,
-                "failed_fields": state.failed_fields,
-                "verified_fields": state.verified_fields,
-                "last_error": state.last_error,
-            },
-            "history": history[-50:],   # 保留最近 50 条
-        }
-        
-        checkpoint_dir = CONFIG.outputs_dir / "mcp_agent"
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        path = checkpoint_dir / f"checkpoint_{timestamp()}.json"
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        return path
-
-    @staticmethod
-    def _load_checkpoint(path: str) -> dict:
-        """加载 checkpoint 文件。"""
-        from pathlib import Path
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Checkpoint 不存在: {path}")
-        return json.loads(path.read_text(encoding="utf-8"))
-
-    def _parse_tool_call(self, response):
-        """Parse tool call from LLM response (handles both dict and str)."""
-        if isinstance(response, dict):
-            return response.get("tool"), response.get("params", {})
-        
-        try:
-            obj = json.loads(str(response))
-            return obj.get("tool"), obj.get("params", {})
-        except (json.JSONDecodeError, TypeError):
-            return None
+    def _find_next_uid(self, snapshot_text: str) -> str:
+        """在无障碍树中找到'下一步'或'下一页'按钮的 uid。"""
+        keywords = ["下一步", "下一页", "继续", "Next", "next", "Continue"]
+        for line in snapshot_text.split("\n"):
+            line_lower = line.lower()
+            for kw in keywords:
+                if kw.lower() in line_lower:
+                    m = re.search(r"uid=([\w_]+)", line)
+                    if m:
+                        return m.group(1)
+        return ""
 
 
 def run_agent(url: str, resume_from: str = "") -> None:

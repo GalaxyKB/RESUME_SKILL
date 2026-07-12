@@ -5,6 +5,10 @@ Replaces the old hardcoded FIELD_RULES with AI-driven semantic matching.
 Falls back to rule-based matching when LLM is unavailable.
 """
 
+# DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead.
+# This file is kept for backward compatibility with the old workflow.py flow.
+# Will be removed in v3.0.
+
 from __future__ import annotations
 
 import json

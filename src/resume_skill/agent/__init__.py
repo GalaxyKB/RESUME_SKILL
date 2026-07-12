@@ -1,12 +1,10 @@
-"""Apply agent - browser automation, form extraction, matching, and filling."""
+"""
+Apply agent - browser automation, form extraction, matching, and filling.
+
+v2.4: The MCP Agent path (agent/mcp/agent.py) uses Google Chrome DevTools MCP.
+The classical path (workflow.py) is still available for backward compatibility.
+"""
 
 from .workflow import run_apply_flow, RunOptions
-
-try:
-    from .mcp.client import MCPClient
-    from .mcp.server import TOOL_HELP
-    _mcp_available = True
-except ImportError:
-    _mcp_available = False
 
 __all__ = ["run_apply_flow", "RunOptions"]
