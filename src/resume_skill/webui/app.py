@@ -294,6 +294,7 @@ def _scout_worker(profile_text: str, preferences: dict):
             return list(range(1, 20))
 
     def _llm_analyze_jobs(company_name: str, snapshot_text: str) -> list[dict]:
+        log(f"[{company_name}] LLM分析中...")
         prompt = f"""你是一个招聘页面分析AI。分析以下招聘页面的无障碍树，完成以下任务：
 
 ## 任务

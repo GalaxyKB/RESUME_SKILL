@@ -274,9 +274,9 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         <div v-if="scoutRunning" class="progress mt-2" style="height:6px;max-width:300px">
           <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#4ecdc4"></div>
         </div>
-        <div v-if="scoutLog.length" class="mt-3">
+        <div v-if="scoutRunning || scoutLog.length" class="mt-3">
           <small class="text-muted">分析日志：</small>
-          <div class="log-box">{{scoutLog.join('\n')}}</div>
+          <div class="log-box">{{scoutLog.length ? scoutLog.join('\n') : '正在启动分析...\n'}}</div>
         </div>
         <div v-if="scoutResults.length" class="mt-3">
           <table class="table table-sm table-hover">
