@@ -143,27 +143,38 @@ class MCPAgent:
         """
         fields_json = json.dumps(fields, ensure_ascii=False, indent=2)
 
-        prompt = f"""
-你是一个表单填充助手。根据用户档案（MD格式），回答每个字段应该填什么。
+        prompt = f"""你是一个严谨的网申表单填写助手。你的任务是根据用户档案（MD格式）一次性地为所有表单字段给出答案。
 
-## 规则
-- 如果档案中有对应信息，填写准确值，confidence 为 "high"
-- 如果档案中间接相关（如"毕业院校"与档案中的 school 相关），填写并标注 confidence 为 "medium"
-- 如果档案中完全没有相关信息，answer 填 "未提供"，confidence 为 "low"
-- 对于下拉选择字段，从 options 中选最匹配的选项；如果选项中没有精确匹配，选最接近的
-- 敏感字段（身份证号、政治面貌、银行卡号、家庭住址、护照号等）标记 action 为 "manual"
-- 正常字段标记 action 为 "fill"
-- 如果以上结构化字段中无法找到答案，尝试从 MD 其他部分（如待补全信息、技能列表、自我评价）中寻找线索
+## 核心要求
+
+1. **推理能力** — 不要只找精确匹配，要从已有信息中推理：
+   - 如果档案中有出生日期但没有年龄 → 推算年龄（用2026年）
+   - 如果档案中有学校的"计算机科学与技术"专业，字段是"就读院系" → 填"计算机科学与技术"
+   - 如果档案中有毕业时间 → 可以推算"是否应届"
+   - 如果档案中有 GitHub 链接 → 可以推断"是否会 Git"
+   - 下拉选项：从 options 中选最接近的，不要空着
+
+2. **一次性回答所有字段** — 所有字段一次性给出答案，不要分批
+
+3. **严谨负责** — 有根据地填写，不随意编造。确实不知道的 confidence 填 "low"，不是在瞎猜的填 "high"
+
+## 分类标准
+
+- **confidence = high**: 档案中有确切对应信息（如姓名、邮箱、学校等），答案确定
+- **confidence = medium**: 通过推理得到的信息（如从出生日期推算年龄、从专业推断技能等），较确定
+- **confidence = low**: 没有任何信息线索，只能用常识推测或完全不知道
+
+- **action = fill**: 正常字段，自动填入
+- **action = manual**: 敏感字段（身份证号、政治面貌、银行卡号、家庭住址、护照号等），需要用户自己填
 
 ## 用户档案
 {self.profile}
 
-## 表单字段
+## 表单字段（一次性全部回答）
 {fields_json}
 
 返回纯 JSON（不要 markdown 代码块），格式：
-{{"answers": [{{"uid": "...", "answer": "...", "confidence": "high/medium/low", "action": "fill/manual"}}]}}
-"""
+{{"answers": [{{"uid": "...", "answer": "...", "confidence": "high/medium/low", "action": "fill/manual"}}]}}"""
         result = self.llm.call_json("", prompt)
         if isinstance(result, dict) and "answers" in result:
             return result["answers"]

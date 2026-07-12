@@ -176,14 +176,19 @@ def api_scout_login():
         chrome = ChromeDevToolsClient(headless=False)
         try:
             chrome.connect()
-            for c in companies:
+            for i, c in enumerate(companies):
                 name = c.get("name", "?")
                 url = c.get("url", "")
-                if url:
+                if not url:
+                    continue
+                if i == 0:
                     chrome.call_tool("navigate_page", {"url": url})
-            print(f"[scout] 已打开 {len(companies)} 个公司页面，等待用户登录")
+                else:
+                    chrome.call_tool("new_page", {"url": url})
+                print(f"[scout] 已打开 {name}: {url}")
         except Exception as e:
             print(f"[scout] 打开页面失败: {e}")
+            import traceback; traceback.print_exc()
 
     thread = threading.Thread(target=_open_all, daemon=True)
     thread.start()
