@@ -1,8 +1,9 @@
 """
 LLM-powered semantic field matching engine.
 
-Replaces the old hardcoded FIELD_RULES with AI-driven semantic matching.
-Falls back to rule-based matching when LLM is unavailable.
+DEPRECATED: v2.4 MCP Agent uses LLM Q&A matching (_answer_fields) instead
+of 3-tier matching with hardcoded rules.
+Kept for backward compatibility with the classical workflow.py path.
 """
 
 # DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead.

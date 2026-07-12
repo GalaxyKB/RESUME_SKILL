@@ -1,13 +1,9 @@
 """
 Form filler with multi-strategy fallback and post-fill verification.
 
-Key improvements over v1:
-- 4-level selector resolution (CSS → XPath → text → getByRole)
-- Radio/checkbox support (no longer skipped)
-- Date picker handling
-- Cascader support
-- Post-fill verification
-- Per-field retry with different strategies
+DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP (fill(uid, value))
+instead of 9-strategy Playwright filling.
+Kept for backward compatibility with the classical workflow.py path.
 """
 
 # DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead.

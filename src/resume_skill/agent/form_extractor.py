@@ -1,10 +1,9 @@
 """
 Dual-channel form field extractor.
 
-Channel A: Rule-based extraction (fast, comprehensive)
-Channel B: AI HTML analysis (accurate, semantic)
-
-Results are merged with deduplication, preferring AI results.
+DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP (take_snapshot)
+instead of JS injection + CSS selectors.
+Kept for backward compatibility with the classical workflow.py path.
 """
 
 # DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead.

@@ -1,5 +1,8 @@
 """
 Browser automation using Playwright.
+
+DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead of Playwright.
+This file is kept for backward compatibility with the classical workflow.py path.
 """
 
 # DEPRECATED: v2.4 MCP Agent uses Google Chrome DevTools MCP instead.
