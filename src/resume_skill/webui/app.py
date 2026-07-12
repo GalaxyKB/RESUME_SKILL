@@ -198,8 +198,8 @@ def api_scout_login():
 
 # ─── 勘探（Scout）API ─────────────────────────────────────
 
-def _scout_worker(profile: dict, preferences: dict):
-    global _scout_progress
+def _scout_worker(profile_text: str, preferences: dict):
+    global _chrome_instance, _scout_progress
     _scout_progress["running"] = True
     _scout_progress["log"] = []
     _scout_progress["results"] = []
@@ -207,49 +207,101 @@ def _scout_worker(profile: dict, preferences: dict):
     def log(msg: str):
         _scout_progress["log"].append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-    from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
-    chrome = ChromeDevToolsClient(headless=False)
+    chrome = _chrome_instance
+    if chrome is None:
+        log("错误：请先拉起公司官网进行登录")
+        _scout_progress["running"] = False
+        return
+
+    from ..llm.factory import create_llm_client
+    llm = create_llm_client()
+
+    def _llm_analyze_jobs(company_name: str, snapshot_text: str) -> list[dict]:
+        """Use LLM to analyze the page, extract and match job listings."""
+        # Try to find and use search/filter form
+        prompt = f"""你是一个招聘页面分析AI。分析以下招聘页面的无障碍树，完成以下任务：
+
+## 任务
+1. 找到页面中的所有职位信息（标题、链接等）
+2. 如果页面有搜索框或筛选控件，描述应该用什么关键词搜索匹配的岗位
+3. 根据用户档案（如下）判断哪些职位可能是该用户感兴趣的
+
+## 用户档案
+{profile_text[:4000]}
+
+## 页面无障碍树
+{snapshot_text[:6000]}
+
+返回 JSON（不要代码块）：
+{{"search_fields": [{{"uid":"...", "label":"...", "action":"在搜索框填入什么关键词"}}],
+  "found_jobs": [{{"title":"岗位名称", "uid":"岗位链接元素的UID"}}],
+  "analysis": "简要分析说明"}}"""
+        try:
+            result = llm.call_json("", prompt)
+            if isinstance(result, dict):
+                return result.get("found_jobs", [])
+        except Exception as e:
+            log(f"  LLM分析失败: {e}")
+        return []
 
     try:
-        chrome.connect()
-        log("Chrome 已启动")
-
         companies = preferences.get("target_companies", [])
         for i, company in enumerate(companies):
             name = company.get("name", f"公司{i+1}")
-            url = company.get("url", "")
-            if not url:
-                log(f"[{name}] 跳过：无 URL")
+            if i >= 3:
+                log(f"[{name}] 跳过：最多分析3个公司")
                 continue
 
-            log(f"[{name}] 正在打开 {url}...")
+            log(f"[{name}] 正在分析...")
             try:
-                chrome.call_tool("navigate_page", {"url": url})
-                time.sleep(2)
+                # Select the tab for this company (tabs are numbered 1,2,3...)
+                if i > 0:
+                    try:
+                        chrome.call_tool("select_page", {"page": i + 1})
+                        time.sleep(1)
+                    except Exception:
+                        log(f"[{name}] 无法选择标签页，尝试重新导航")
+                        url = company.get("url", "")
+                        if url:
+                            chrome.call_tool("navigate_page", {"url": url})
+                            time.sleep(2)
 
+                # Take snapshot to see the page
                 snapshot = chrome.call_tool("take_snapshot", {})
-                log(f"[{name}] 页面无障碍树已获取")
+                log(f"[{name}] 页面已读取")
 
-                # TODO: LLM 分析 + 搜索职位 + 匹配简历
-                # 当前版本：输出占位结果
+                # LLM analyze the page
+                found_jobs = _llm_analyze_jobs(name, str(snapshot))
+                if found_jobs:
+                    log(f"[{name}] 找到 {len(found_jobs)} 个匹配岗位")
+                else:
+                    log(f"[{name}] 暂无匹配岗位（页面结构可能需要手动优化）")
+
+                # Current jobs found from this company
+                company_results = []
+                for j in found_jobs[:5]:
+                    title = j.get("title", "未知岗位")
+                    uid = j.get("uid", "")
+                    link = f"{company.get('url', '')} (uid: {uid})"
+                    company_results.append({"title": title, "link": link})
+
+                if not company_results:
+                    company_results.append({"title": "(暂未匹配到岗位，请手动查看)", "link": company.get("url", "")})
+
                 _scout_progress["results"].append({
                     "company": name,
-                    "url": url,
-                    "matched_jobs": [
-                        {"title": "示例岗位 (搜索功能开发中)", "link": url}
-                    ],
+                    "url": company.get("url", ""),
+                    "matched_jobs": company_results,
                 })
                 log(f"[{name}] 完成")
             except Exception as e:
                 log(f"[{name}] 出错: {e}")
+                import traceback
+                traceback.print_exc()
 
     except Exception as e:
         log(f"勘探失败: {e}")
     finally:
-        try:
-            chrome.close()
-        except Exception:
-            pass
         _scout_progress["running"] = False
         log("勘探结束")
 
@@ -260,12 +312,13 @@ def api_scout_start():
     if _scout_progress.get("running"):
         return jsonify({"error": "勘探任务已在运行"}), 400
 
-    profile = load_yaml(CONFIG.unified_profile_path) or {}
+    md_path = CONFIG.personal_info_dir / "profile_template.md"
+    profile_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
     prefs = _load_preferences()
     if not prefs.get("target_companies"):
         return jsonify({"error": "请在偏好设置中至少添加一个目标公司"}), 400
 
-    thread = threading.Thread(target=_scout_worker, args=(profile, prefs), daemon=True)
+    thread = threading.Thread(target=_scout_worker, args=(profile_text, prefs), daemon=True)
     thread.start()
     return jsonify({"status": "started"})
 
