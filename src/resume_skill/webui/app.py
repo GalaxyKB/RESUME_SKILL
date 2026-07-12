@@ -82,6 +82,32 @@ def api_consolidate():
         return jsonify({"error": str(e)}), 500
 
 
+# ─── 档案编辑 API ──────────────────────────────────────────
+
+@app.route("/api/profile/template", methods=["GET", "POST"])
+def api_profile_template():
+    """读写 profile_template.md"""
+    path = CONFIG.personal_info_dir / "profile_template.md"
+    if request.method == "POST":
+        data = request.get_json()
+        content = data.get("content", "")
+        path.write_text(content, encoding="utf-8")
+        return jsonify({"status": "saved"})
+    if path.exists():
+        return jsonify({"exists": True, "content": path.read_text(encoding="utf-8")})
+    return jsonify({"exists": False, "content": ""})
+
+
+@app.route("/api/profile/unified", methods=["GET"])
+def api_profile_unified():
+    """读取 unified_profile.yaml"""
+    path = CONFIG.unified_profile_path
+    if path.exists():
+        content = path.read_text(encoding="utf-8")
+        return jsonify({"exists": True, "content": content})
+    return jsonify({"exists": False, "content": ""})
+
+
 # ─── 偏好设置 API ──────────────────────────────────────────
 
 PREFERENCES_PATH = CONFIG.project_root / "job_preferences.yaml"
