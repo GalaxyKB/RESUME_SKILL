@@ -387,6 +387,18 @@ def api_scout_start():
     return jsonify({"status": "started"})
 
 
+@app.route("/api/scout/debug", methods=["GET"])
+def api_scout_debug():
+    """Debug endpoint to check scout state."""
+    global _chrome_instance, _scout_progress
+    return jsonify({
+        "chrome_alive": _chrome_instance is not None,
+        "scout_running": _scout_progress.get("running", False),
+        "scout_log_count": len(_scout_progress.get("log", [])),
+        "scout_result_count": len(_scout_progress.get("results", [])),
+    })
+
+
 @app.route("/api/scout/status", methods=["GET"])
 def api_scout_status():
     global _scout_progress
