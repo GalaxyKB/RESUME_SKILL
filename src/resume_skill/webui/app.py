@@ -275,9 +275,6 @@ def _scout_worker(profile_text: str, preferences: dict):
         _scout_progress["running"] = False
         return
 
-    from resume_skill.llm.factory import create_llm_client
-    llm = create_llm_client()
-
     def _get_page_ids() -> list[int]:
         try:
             result = chrome.call_tool("list_pages", {})
@@ -293,75 +290,51 @@ def _scout_worker(profile_text: str, preferences: dict):
         except:
             return list(range(1, 20))
 
-    def _llm_analyze_jobs(company_name: str, snapshot_text: str) -> list[dict]:
-        log(f"[{company_name}] LLM分析中...")
-        prompt = f"""你是一个招聘页面分析AI。分析以下招聘页面的无障碍树，完成以下任务：
-
-## 任务
-1. 找到页面中的所有职位信息（标题、链接等）
-2. 根据用户档案（如下）判断哪些职位可能是该用户感兴趣的
-
-## \u7528\u6237\u6863\u6848
-{profile_text[:4000]}
-
-## \u9875\u9762\u65e0\u969c\u788d\u6811
-{snapshot_text[:6000]}
-
-\u8fd4\u56de JSON\uff08\u4e0d\u8981\u4ee3\u7801\u5757\uff09：
-{{"found_jobs": [{{\u201ctitle\u201d:\u201d\u5c97\u4f4d\u540d\u79f0\u201d}}],
-  \u201canalysis\u201d: \u201c\u7b80\u8981\u5206\u6790\u8bf4\u660e\u201d}}"""
-        try:
-            result = llm.call_json("", prompt)
-            if isinstance(result, dict):
-                return result.get("found_jobs", [])
-        except Exception as e:
-            log(f"  LLM\u5206\u6790\u5931\u8d25: {e}")
-        return []
-
+    # Simplified scout: read company pages and return as links
     try:
         page_ids = _get_page_ids()
         companies = preferences.get("target_companies", [])
         for i, company in enumerate(companies):
             name = company.get("name", f"公司{i+1}")
-            if i >= 3:
-                log(f"[{name}] 跳过：最多分析3个公司")
-                continue
+            url = company.get("url", "")
+            log(f"[{name}] 正在读取页面...")
+            
+            # Select the correct tab
+            if i > 0 and i < len(page_ids):
+                try:
+                    chrome.call_tool("select_page", {"pageId": page_ids[i]})
+                    time.sleep(1)
+                except Exception as e:
+                    log(f"[{name}] 标签页选择: {str(e)[:60]}")
 
-            log(f"[{name}] 正在分析...")
+            # Get page title from snapshot
             try:
-                if i > 0 and i < len(page_ids):
-                    try:
-                        chrome.call_tool("select_page", {"pageId": page_ids[i]})
-                        time.sleep(1)
-                    except Exception as e:
-                        log(f"[{name}] 无法选择标签页: {str(e)[:60]}")
-
                 snapshot = chrome.call_tool("take_snapshot", {})
-                log(f"[{name}] 页面已读取")
-
-                found_jobs = _llm_analyze_jobs(name, str(snapshot))
-                if found_jobs:
-                    log(f"[{name}] 找到 {len(found_jobs)} 个匹配岗位")
-                else:
-                    log(f"[{name}] 暂无匹配岗位")
-
-                company_results = []
-                for j in found_jobs[:5]:
-                    title = j.get("title", "未知岗位")
-                    link = company.get("url", "")
-                    company_results.append({"title": title, "link": link})
-
-                if not company_results:
-                    company_results.append({"title": "(暂无匹配岗位)", "link": company.get("url", "")})
-
-                _scout_progress["results"].append({
-                    "company": name,
-                    "url": company.get("url", ""),
-                    "matched_jobs": company_results,
-                })
-                log(f"[{name}] 完成")
+                snapshot_str = str(snapshot)
+                # Extract page title from first line
+                page_title = "招聘页面"
+                first_line = snapshot_str.split("\n")[0] if snapshot_str else ""
+                if first_line:
+                    page_title = first_line[:60]
+                log(f"[{name}] 已读取: {page_title}")
             except Exception as e:
-                log(f"[{name}] 出错: {e}")
+                log(f"[{name}] 读取页面失败: {e}")
+
+            company_results = [
+                {"title": f"{name} - {page_title}", "link": url},
+            ]
+
+            _scout_progress["results"].append({
+                "company": name,
+                "url": url,
+                "matched_jobs": company_results,
+            })
+            log(f"[{name}] 完成")
+    except Exception as e:
+        log(f"勘探失败: {e}")
+    finally:
+        _scout_progress["running"] = False
+        log("勘探结束")
 
     except Exception as e:
         log(f"勘探失败: {e}")
