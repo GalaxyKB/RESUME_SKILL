@@ -13,6 +13,7 @@
 
 # Personal data and resumes
 personal_info/unified_profile.yaml
+personal_info/profile_template.md
 personal_info/resume/*
 !personal_info/resume/.gitkeep
 personal_info/formal_resume/*
