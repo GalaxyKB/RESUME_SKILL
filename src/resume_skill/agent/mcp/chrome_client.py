@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import threading
 import time
 from typing import Any
@@ -31,13 +32,16 @@ class ChromeDevToolsClient:
         
         command_args = ["npx"] + args
         print(f"启动 chrome-devtools-mcp: {' '.join(command_args)}")
+        # Windows 需要 shell=True 因为 npx 是 npx.cmd（批处理文件）
+        use_shell = sys.platform == "win32"
         self._process = subprocess.Popen(
-            command_args,
+            " ".join(command_args) if use_shell else command_args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            shell=use_shell,
         )
         
         # 等待进程启动
