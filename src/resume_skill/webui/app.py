@@ -161,6 +161,35 @@ def api_preferences():
     return jsonify(_load_preferences())
 
 
+# ─── 批量登录 API ──────────────────────────────────────────
+
+@app.route("/api/scout/login", methods=["POST"])
+def api_scout_login():
+    """Open all company websites in Chrome for user to login."""
+    data = request.get_json() or {}
+    companies = data.get("companies", [])
+    if not companies:
+        return jsonify({"error": "没有公司"}), 400
+
+    def _open_all():
+        from .mcp.chrome_client import ChromeDevToolsClient
+        chrome = ChromeDevToolsClient(headless=False)
+        try:
+            chrome.connect()
+            for c in companies:
+                name = c.get("name", "?")
+                url = c.get("url", "")
+                if url:
+                    chrome.call_tool("navigate_page", {"url": url})
+            print(f"[scout] 已打开 {len(companies)} 个公司页面，等待用户登录")
+        except Exception as e:
+            print(f"[scout] 打开页面失败: {e}")
+
+    thread = threading.Thread(target=_open_all, daemon=True)
+    thread.start()
+    return jsonify({"status": "opened", "count": len(companies)})
+
+
 # ─── 勘探（Scout）API ─────────────────────────────────────
 
 def _scout_worker(profile: dict, preferences: dict):
