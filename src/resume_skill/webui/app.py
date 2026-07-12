@@ -196,6 +196,77 @@ def api_scout_login():
         return jsonify({"error": f"打开 Chrome 失败: {str(e)}"}), 500
 
 
+# ─── 网申填写 API ─────────────────────────────────────────
+
+@app.route("/api/fill/start", methods=["POST"])
+def api_fill_start():
+    """Open application URL, snapshot, LLM Q&A match, return filled fields."""
+    url = request.form.get("url", "")
+    if not url:
+        return jsonify({"error": "请提供投递页面 URL"}), 400
+
+    from .mcp.chrome_client import ChromeDevToolsClient
+    from ..agent.mcp.agent import MCPAgent
+    import tempfile, os
+
+    # Save uploaded resume if provided
+    resume_path = ""
+    if "resume" in request.files:
+        f = request.files["resume"]
+        tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        f.save(tmp.name)
+        resume_path = tmp.name
+
+    try:
+        chrome = ChromeDevToolsClient(headless=False)
+        chrome.connect()
+        chrome.call_tool("navigate_page", {"url": url})
+        import time; time.sleep(2)
+
+        snapshot = chrome.call_tool("take_snapshot", {})
+        print(f"[fill] Snapshot: {len(str(snapshot))} chars")
+
+        # Parse snapshot to fields using the same logic as agent.py
+        from resume_skill.agent.mcp.agent import MCPAgent
+        agent = MCPAgent.__new__(MCPAgent)
+        fields = agent._parse_snapshot(str(snapshot))
+        print(f"[fill] Found {len(fields)} form fields")
+
+        # Load MD profile and run LLM Q&A
+        md_path = CONFIG.personal_info_dir / "profile_template.md"
+        profile_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+        if profile_text:
+            agent.profile = profile_text
+            agent.llm = __import__("resume_skill.llm.factory", fromlist=["create_llm_client"]).create_llm_client()
+            answers = agent._answer_fields(fields)
+            print(f"[fill] Got {len(answers)} LLM answers")
+
+            # Merge answers into fields
+            answer_map = {a.get("uid", ""): a for a in answers}
+            for f in fields:
+                uid = f.get("uid", "")
+                if uid in answer_map:
+                    ans = answer_map[uid]
+                    f["answer"] = ans.get("answer", "")
+                    f["confidence"] = ans.get("confidence", "low")
+                    f["action"] = ans.get("action", "fill")
+
+        chrome.close()
+        if resume_path:
+            os.unlink(resume_path)
+
+        return jsonify({"fields": fields, "count": len(fields)})
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        try: chrome.close()
+        except: pass
+        if resume_path:
+            try: os.unlink(resume_path)
+            except: pass
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── 勘探（Scout）API ─────────────────────────────────────
 
 def _scout_worker(profile_text: str, preferences: dict):
