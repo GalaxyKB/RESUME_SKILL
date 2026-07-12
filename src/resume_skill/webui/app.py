@@ -61,11 +61,9 @@ def api_extract():
     file.save(str(pdf_path))
 
     try:
-        import sys
-        from argparse import Namespace
         from ..extractor.extractor import PersonalInfoExtractor
 
-        extractor = PersonalInfoExtractor(llm_client=None)
+        extractor = PersonalInfoExtractor(personal_info_dir=str(CONFIG.personal_info_dir))
         result = extractor.extract_from_resume_pdf(str(pdf_path))
         return jsonify({"status": "extracted", "data": result})
     except Exception as e:
@@ -75,11 +73,9 @@ def api_extract():
 @app.route("/api/consolidate", methods=["POST"])
 def api_consolidate():
     try:
-        import sys
-        from argparse import Namespace
         from ..extractor.extractor import PersonalInfoExtractor
 
-        extractor = PersonalInfoExtractor(llm_client=None)
+        extractor = PersonalInfoExtractor(personal_info_dir=str(CONFIG.personal_info_dir))
         profile = extractor.generate_unified_profile()
         return jsonify({"status": "consolidated", "profile": profile})
     except Exception as e:
