@@ -129,9 +129,9 @@ body{background:#f4f6f9;font-size:14px;color:#333}
           <button class="btn btn-sm btn-warning mt-2" @click="prependMissing">勾选的补到顶部去填写</button>
         </div>
 
-        <div v-if="!analyzing && !missingFields.length && templateContent" class="alert alert-success py-2">
-          <b>简历信息完整</b>，没有发现明显缺少的网申字段。
-          <button class="btn btn-sm btn-outline-success ml-2" @click="analyzeMissing">再检查一次</button>
+        <div v-if="!analyzing && !missingFields.length && templateContent" class="alert alert-info py-2">
+          <b>请逐项核对</b>，如果发现缺少信息，直接在左侧档案中添加补充。
+          <button class="btn btn-sm btn-outline-info ml-2" @click="analyzeMissing">重新检查</button>
         </div>
 
         <div class="mb-3">
