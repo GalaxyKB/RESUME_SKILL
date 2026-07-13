@@ -1,252 +1,343 @@
 <div align="center">
 
-# 🎯 RESUME_SKILL
+# RESUME_SKILL
 
-<img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Robot.png" alt="Robot" width="100" height="100" />
+### AI-powered job application copilot for resume analysis, browser automation, and GUI recovery
 
-### 🤖 基于 Google Chrome DevTools MCP 的智能网申 Agent
+<p>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/LangGraph-Orchestration-1C3C3C?style=for-the-badge" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/Chrome_DevTools-MCP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome DevTools MCP" />
+  <img src="https://img.shields.io/badge/Vision-GUI_Agent-8A2BE2?style=for-the-badge" alt="Vision GUI Agent" />
+  <img src="https://img.shields.io/badge/License-MIT-00D9FF?style=for-the-badge" alt="MIT License" />
+</p>
 
-<h4>v2.4 — take_snapshot → LLM Q&A 匹配 → fill 自动填充</h4>
-
----
-
-<div align="center">
-  <img src="https://img.shields.io/badge/License-MIT-00D9FF?style=for-the-badge&logo=opensource&logoColor=white" alt="MIT License"/>
-  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
-  <img src="https://img.shields.io/badge/AI_Powered-DeepSeek-FF6B6B?style=for-the-badge&logo=openai&logoColor=white" alt="AI"/>
-  <img src="https://img.shields.io/badge/Google_MCP-Chrome%20DevTools-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome DevTools MCP"/>
-</div>
+RESUME_SKILL is evolving from an autofill script into a LangGraph-driven application agent: it analyzes your resume, understands job descriptions, plans the application flow, operates Chrome through Google Chrome DevTools MCP, and uses vision feedback to recover from complex UI failures.
 
 </div>
 
 ---
 
-## 📖 这是什么
+## What It Does
 
-RESUME_SKILL 是一个 AI 驱动的网申自动填表工具。只需要三步：
+RESUME_SKILL helps with the repetitive parts of online job applications while keeping the user in control.
 
+```text
+Resume PDF
+  -> AI resume analysis
+  -> profile review
+  -> JD analysis
+  -> tailored application materials
+  -> browser application planning
+  -> Chrome MCP execution
+  -> vision-based GUI verification and recovery
 ```
-1. resume-skill extract --pdf 简历.pdf    → AI 提取个人信息
-2. resume-skill consolidate               → 生成统一档案
-3. resume-skill apply --url "..." --use-mcp → 自动打开浏览器 → 识别表单 → 逐字段填充
-```
 
-**传统手填 15 分钟 → 30 秒完成。**
+The project is designed for real application forms, not only simple HTML inputs. The next-generation workflow treats each page as an interactive GUI task: observe the page, plan one safe action, execute it, verify visually, and recover when the UI behaves unexpectedly.
 
-整个流程全本地化运行，简历信息和 API key 不上传任何第三方服务器。
+## Why This Matters
+
+Most job application sites are not clean forms. They contain custom dropdowns, async validation, file upload widgets, modal dialogs, multi-step flows, city pickers, date pickers, and login interruptions. A one-shot `fill()` call is not enough.
+
+RESUME_SKILL combines three layers:
+
+| Layer | Role |
+| --- | --- |
+| Text LLM | Understands resume data, JD requirements, field meaning, and safe answers |
+| Chrome DevTools MCP | Provides browser observation and controlled actions such as `click`, `fill_form`, `upload_file`, `take_snapshot`, and `take_screenshot` |
+| Vision GUI Agent | Verifies what actually happened on screen and proposes recovery actions for difficult UI controls |
+
+The goal is not blind automation. The goal is controlled assistance with visible state, logs, recovery, and explicit manual handoff for sensitive or unsafe steps.
 
 ---
 
-## 🚀 5 分钟跑起来
+## Current Direction
 
-### 前提条件
+The core workflow is being migrated to LangGraph.
 
-| 环境 | 版本要求 |
-|------|---------|
-| Python | 3.9+（推荐 3.10+） |
-| Node.js | 18+（chrome-devtools-mcp 需要） |
-| LLM API Key | DeepSeek 或 OpenAI |
+```text
+START
+  -> Resume Analyzer
+  -> Job Description Analyzer
+  -> Resume Customization
+  -> Cover Letter Generator
+  -> Application Planner
+  -> Browser Executor
+  -> Verify Result
+      -> success -> END
+      -> recoverable failure -> GUI Recovery -> Browser Executor
+      -> manual required -> END
+```
 
-### 安装
+### Unified Agent State
 
-```bash
-# 1. 克隆项目
-git clone https://github.com/GalaxyKB/RESUME_SKILL.git
+The workflow is centered around a shared state object:
+
+```python
+{
+    "user_profile": {...},
+    "resume_data": {...},
+    "resume_pdf_path": "...",
+    "job_description": {...},
+    "application_form": {...},
+    "generated_documents": {...},
+    "browser_context": {...},
+    "current_task": "...",
+    "next_action": {...},
+    "execution_history": [...],
+    "errors": [...],
+    "gui_recovery_needed": False,
+    "manual_required": False,
+    "success": False,
+}
+```
+
+This gives the agent memory, traceability, and a clear success criterion: a field is not considered done until the browser action has completed and the page state has been verified.
+
+---
+
+## Agent Nodes
+
+The planned LangGraph nodes are intentionally small and auditable.
+
+| Node | Responsibility |
+| --- | --- |
+| Resume Analyzer | Parse the user's resume and extract profile, education, projects, skills, and work history |
+| Job Description Analyzer | Extract requirements, responsibilities, keywords, and match criteria from a JD |
+| Resume Customization | Tailor resume content toward the target role |
+| Cover Letter Generator | Generate cover letters, self-introductions, and open-question drafts |
+| Application Planner | Decide the next safe browser action from profile, page state, and execution history |
+| Browser Executor | Execute whitelisted browser actions through Chrome DevTools MCP |
+| Verify Result | Use snapshot and screenshot evidence to decide whether the action really worked |
+| GUI Recovery | Use a lightweight vision-guided loop to recover from custom dropdowns, upload widgets, modals, and failed inputs |
+
+---
+
+## Browser Automation Strategy
+
+RESUME_SKILL uses Google Chrome DevTools MCP as the browser execution layer.
+
+Key MCP tools used by the project:
+
+| Tool | Purpose |
+| --- | --- |
+| `take_snapshot` | Read the accessibility tree and obtain stable `uid` references |
+| `take_screenshot` | Capture the actual visual page for vision verification |
+| `fill_form` | Fill multiple stable inputs quickly |
+| `fill` | Fill one text input, textarea, select, checkbox, or radio |
+| `click` | Open dropdowns, buttons, tabs, and custom controls |
+| `upload_file` | Upload the local resume PDF to the official application website |
+| `type_text` / `press_key` | Recover when direct filling does not work |
+| `wait_for` | Wait for async page changes |
+
+Chrome DevTools MCP is the agent's hands and eyes. The models decide what to do; MCP executes only approved actions.
+
+---
+
+## Lightweight GUI Agent
+
+The GUI recovery layer is deliberately narrow. It is not a heavyweight Computer Use agent.
+
+It only performs:
+
+1. Page screenshot
+2. Visual understanding
+3. Control or coordinate localization
+4. Mouse and keyboard actions through the browser adapter
+
+Example action schema:
+
+```json
+{
+  "type": "click",
+  "uid": "1_24",
+  "value": "",
+  "reason": "Open the education dropdown before selecting an option"
+}
+```
+
+Allowed recovery actions are restricted to:
+
+```text
+click | type_text | press_key | upload_file | manual
+```
+
+The agent does not execute arbitrary JavaScript and does not click final submit buttons unless explicitly allowed.
+
+---
+
+## Installation
+
+### Requirements
+
+| Dependency | Version |
+| --- | --- |
+| Python | 3.10+ recommended |
+| Node.js | 18+ |
+| Google Chrome | Recent stable version |
+| LLM API Key | Volcengine Ark / OpenAI-compatible provider |
+
+The local development environment used by this project is:
+
+```powershell
+conda activate resume-skill-v24
+```
+
+Environment path used during development:
+
+```text
+D:\ProgramData\Anaconda3\envs\resume-skill-v24
+```
+
+### Setup
+
+```powershell
+git clone git@github.com:GalaxyKB/RESUME_SKILL.git
 cd RESUME_SKILL
 
-# 2. 创建虚拟环境（推荐 conda）
-conda create -n resume-skill python=3.10 nodejs -y
-conda activate resume-skill
-
-# 3. 安装项目依赖
+conda activate resume-skill-v24
 pip install -e .
 
-# 4. 配置 API Key
-cp .env.example .env
-# 编辑 .env，填入 DEEPSEEK_API_KEY 或 OPENAI_API_KEY
+copy .env.example .env
+# Edit .env and add your own API keys. Never commit .env.
 
-# 5. 验证
-resume-skill doctor
-npx chrome-devtools-mcp@latest --help   # 验证 Google MCP 可用
+npx chrome-devtools-mcp@latest --help
 ```
 
-### 使用
+### Start Web UI
 
-```bash
-# Step 1: 把 PDF 简历放到 personal_info/formal_resume/
+```powershell
+$env:PYTHONPATH = "src"
+python -B -m resume_skill.webui.app --clean
+```
 
-# Step 2: AI 提取个人信息
-resume-skill extract --pdf personal_info/formal_resume/我的简历.pdf
+Then open:
 
-# Step 3: 生成统一档案
-resume-skill consolidate
-
-# Step 4: 打开招聘页面，自动填充
-resume-skill apply --url "https://..." --use-mcp
+```text
+http://127.0.0.1:5000/
 ```
 
 ---
 
-## 🧠 技术架构
+## Configuration
 
-### 两层 MCP Server
+`.env.example` is a public template. It must not contain real keys.
 
-```
-MCP Agent (agent.py)
- ├── 调用 Google Chrome DevTools MCP（Node.js，Puppeteer）
- │    ├── navigate_page(url)     → 打开招聘页面
- │    ├── take_snapshot()        → 获取页面无障碍树
- │    ├── fill(uid, value)       → 填入字段值
- │    ├── click(uid)             → 点击按钮（提交/翻页）
- │    └── take_screenshot()      → 截图
- │
- └── 调用 自建 Server（Python，仅 1 个工具）
-      └── wait_for_user(message) → 等待用户手动操作（登录）
-```
+`.env` is your private local configuration and is ignored by Git.
 
-Agent 的 LLM 负责将无障碍树中的表单字段映射为用户档案中的值（`_answer_fields` 方法）。
+Recommended dual-model setup:
 
-### 核心流程
+```env
+LLM_PROVIDER=ark
+ARK_API_KEY=your_ark_api_key_here
+ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+ARK_MODEL=doubao-seed-2-0-lite-260428
 
-```
-take_snapshot() → 获取页面无障碍树
-        │
-        ▼
-_parse_snapshot() → 提取 {uid, label, type, options}
-        │
-        ▼
-_answer_fields(LLM Q&A) → 返回 {uid, answer, confidence, action}
-        │
-        ▼
-fill(uid, answer) 循环 → 逐字段填充
-        │
-        ▼
-下一页 / 提交
+VISION_ENABLED=true
+VISION_PROVIDER=ark_chat
+VISION_API_KEY=your_ark_api_key_here
+VISION_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+VISION_MODEL=doubao-seed-2-1-turbo-260628
 ```
 
-### 关键工具对比
+Recommended model split:
 
-| 功能 | v2.3 及之前 | v2.4 |
-|------|------------|------|
-| 浏览器控制 | 自建 `browser_agent.py` 266 行 | Google `chrome-devtools-mcp` |
-| 字段提取 | 370 行 JS 注入 + CSS 选择器 | `take_snapshot()` 无障碍树 + UID |
-| 字段填充 | 九策略降级填充 800 行 | `fill(uid, value)` 单行调用 |
-| 字段匹配 | 三阶引擎（关键词规则 23 条） | LLM Q&A 问答（无规则） |
-| 代码量 | ~2000 行浏览器相关代码 | ~200 行（匹配+解析） |
+| Capability | Model Role |
+| --- | --- |
+| Text planning | Resume/JD understanding, field semantics, safe answers |
+| Vision verification | Screen-state validation, dropdown recovery, upload confirmation, UI anomaly detection |
 
 ---
 
-## 🤖 LLM Q&A 智能匹配
+## User Workflow
 
-v2.4 摒弃了关键词规则匹配，改用 LLM 问答模式。每次将字段列表 + 用户档案打包成一个 prompt 发送给 LLM：
+### 1. Upload Resume Locally
 
-```
-System: 你是一个表单填充助手。根据用户档案回答每个字段应该填什么。
+Upload a PDF resume in the Web UI. This step extracts local profile data and creates `profile_template.md`.
 
-用户档案:
-{
-  "personal": {"name_cn": "张三", "email": "zs@test.com", ...},
-  "education": [{"school": "北京大学", "degree": "本科", ...}]
-}
+This is separate from website attachment upload.
 
-表单字段:
-[
-  {"uid": "1_5", "label": "姓名", "type": "text"},
-  {"uid": "1_6", "label": "最高学历", "type": "select", "options": ["高中","本科","硕士","博士"]},
-  {"uid": "1_7", "label": "就读高校", "type": "text"},
-  {"uid": "1_8", "label": "身份证号", "type": "text"}
-]
+### 2. Review Profile
 
-LLM 返回:
-{"answers": [
-  {"uid": "1_5", "answer": "张三", "confidence": "high", "action": "fill"},
-  {"uid": "1_6", "answer": "本科", "confidence": "high", "action": "fill"},
-  {"uid": "1_7", "answer": "北京大学", "confidence": "high", "action": "fill"},
-  {"uid": "1_8", "answer": "未提供", "confidence": "low", "action": "manual"}
-]}
-```
+Edit and complete the generated Markdown profile.
 
-**优势：**
-- 无需维护关键词规则——LLM 自动理解 "就读高校" / "毕业院校" / "大学名称" 的语义
-- 下拉选项智能匹配——"本科" → "学士学位" 等同义词自动识别
-- 敏感字段自动识别——身份证号、政治面貌等标记为 manual
-- 一次 LLM 调用回答所有字段，字段数越多性价比越高
+### 3. Set Job Preferences
+
+Add target companies, roles, cities, and preference information.
+
+### 4. Scout Openings
+
+Open target company career pages and collect candidate jobs.
+
+### 5. Fill Application Page
+
+Navigate Chrome to the target application form. The agent observes the page, plans browser actions, fills stable controls, uploads the resume PDF when required, and uses vision verification to decide whether the page is actually complete.
+
+### 6. Review and Submit Manually
+
+The project is designed to help prepare the application, not blindly submit it. Final submission should remain user-controlled unless explicitly enabled.
 
 ---
 
-## 📂 项目结构
+## Privacy and Safety
 
-```
+- `.env` is ignored by Git and must contain real API keys only locally.
+- `.env.example` is safe to publish and must contain placeholders only.
+- Resume files and generated personal profiles are ignored by Git.
+- Sensitive fields such as ID number, political status, passport number, bank details, and verification codes should be marked manual.
+- The agent should not auto-submit final applications without explicit user approval.
+- Execution history is recorded so every browser action can be inspected.
+
+---
+
+## Project Layout
+
+```text
 src/resume_skill/
-├── cli.py                    # CLI 入口
-├── config.py                 # 配置加载
-├── agent/
-│   ├── mcp/                  # v2.4 核心
-│   │   ├── agent.py          # LLM Agent 决策循环（snapshot → Q&A → fill）
-│   │   ├── chrome_client.py  # Google Chrome DevTools MCP 客户端
-│   │   ├── server.py         # 自建 MCP Server（仅 wait_for_user）
-│   │   ├── client.py         # MCP 客户端（连接自建 Server）
-│   │   ├── recorder.py       # 决策链记录 + 报告生成
-│   │   └── __init__.py
-│   ├── workflow.py           # 旧流程（非 MCP 模式，backward compat）
-│   ├── browser_agent.py      # 旧 Playwright 代码（deprecated）
-│   ├── form_extractor.py     # 旧字段提取代码（deprecated）
-│   ├── form_filler.py        # 旧填充代码（deprecated）
-│   ├── field_matcher.py      # 旧匹配代码（deprecated）
-│   └── utils.py
+├── cli.py                       # CLI entrypoints
+├── config.py                    # Application configuration
 ├── extractor/
-│   └── extractor.py          # PDF 简历 → 个人信息提取
-└── llm/
-    ├── base.py               # BaseLLMClient（含 call_with_tools）
-    ├── openai_provider.py    # OpenAI 原生 function calling
-    ├── deepseek_provider.py  # DeepSeek 回退方案
-    └── factory.py
+│   └── extractor.py             # Resume PDF extraction and profile generation
+├── llm/
+│   ├── base.py                  # Base LLM interface
+│   ├── ark_provider.py          # Volcengine Ark text/vision providers
+│   ├── vision.py                # Vision client factory
+│   └── factory.py               # Text LLM factory
+├── agent/
+│   └── mcp/
+│       ├── chrome_client.py     # Chrome DevTools MCP JSON-RPC client
+│       └── agent.py             # Legacy MCP filling logic
+├── workflow/
+│   ├── state.py                 # LangGraph state model
+│   ├── graph.py                 # StateGraph construction
+│   ├── nodes.py                 # Agent node implementations
+│   ├── runner.py                # Workflow runner
+│   └── store.py                 # In-memory task store
+└── webui/
+    ├── app.py                   # Flask API
+    └── templates/index.html     # Vue2 single-page Web UI
 ```
 
 ---
 
-## 📋 命令速查
+## Roadmap
 
-| 功能 | 命令 |
-|------|------|
-| 健康检查 | `resume-skill doctor` |
-| AI 提取简历 | `resume-skill extract --pdf 简历.pdf` |
-| 生成统一档案 | `resume-skill consolidate` |
-| **v2.4 MCP Agent 投递** | `resume-skill apply --url "URL" --use-mcp` |
-| 旧流程投递 | `resume-skill apply --url "URL" --auto-fill` |
-| 极速投递（自动提交） | `resume-skill apply --url "URL" --auto-fill --auto-submit --non-interactive` |
-
-### 完整工作流
-
-```bash
-resume-skill doctor
-resume-skill extract --pdf "简历.pdf"
-resume-skill consolidate
-resume-skill apply --url "https://hr.company.com/jobs/123" --use-mcp
-```
+- LangGraph orchestration for the full application lifecycle
+- Background task execution with status polling
+- Per-action visual verification
+- GUI recovery for dropdowns, modal dialogs, upload widgets, and custom controls
+- JD-aware resume tailoring
+- Cover letter and open-question generation
+- Safer manual handoff for login, CAPTCHA, SMS verification, and sensitive fields
 
 ---
 
-## 🔒 隐私
-
-- **100% 本地化**：简历和档案存储在 `personal_info/`，不上传云端
-- **.gitignore 保护**：`personal_info/`、`outputs/`、`.env` 均被 git 排除
-- **敏感字段保护**：身份证、政治面貌等自动标记 manual，不自动填充
-- **API Key 安全**：存储在 `.env`，不提交到代码仓库
-- **开源透明**：MIT 许可证，代码完全开放审计
-
----
-
-## 📝 开源协议
+## License
 
 [MIT License](LICENSE)
 
-*自由使用 · 商用友好 · 无限制分发*
-
----
-
 <div align="center">
 
-💡 项目交流、问题反馈，请提交 [GitHub Issues](https://github.com/GalaxyKB/RESUME_SKILL/issues)
+Built for people who are tired of typing the same application form twenty times.
 
 </div>
