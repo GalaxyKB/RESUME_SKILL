@@ -314,26 +314,26 @@ def api_scout_start():
                     _chrome_instance.call_tool("new_page", {"url": url})
                 time.sleep(3)
 
-                # LLM 提取页面中的岗位列表
+                # LLM 快速提取岗位列表
+                log(f"[{name}] 正在分析岗位...")
                 import concurrent.futures
                 try:
                     snapshot = _chrome_instance.call_tool("take_snapshot", {})
-                    prompt = f"""分析以下招聘页面的无障碍树，提取出所有可见的岗位信息（标题）。只返回JSON。
-页面：{name} ({url})
-无障碍树：{str(snapshot)[:5000]}
-
-返回格式：{{"jobs":[{{"title":"岗位名称"}}]}}"""
+                    snapshot_short = str(snapshot)[:2500]
+                    prompt = f"""从页面无障碍树提取职位名称。只返回JSON: {{"jobs":[{{"title":"职位名"}}]}}
+页面：{name}
+无障碍树：{snapshot_short[:2500]}"""
                     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                         future = pool.submit(llm.call_json, "", prompt)
-                        result = future.result(timeout=20)
+                        result = future.result(timeout=10)
                         raw_jobs = result.get("jobs", []) if isinstance(result, dict) else []
-                        matched_jobs = [{"title": j["title"], "link": url} for j in raw_jobs[:8]]
+                        matched_jobs = [{"title": j["title"], "link": url} for j in raw_jobs[:5]]
                         if matched_jobs:
-                            log(f"[{name}] LLM 分析到 {len(matched_jobs)} 个岗位")
+                            log(f"[{name}] 找到 {len(matched_jobs)} 个岗位")
                 except concurrent.futures.TimeoutError:
-                    log(f"[{name}] LLM 分析超时，使用页面标题")
+                    log(f"[{name}] 分析超时")
                 except Exception as e:
-                    log(f"[{name}] LLM 分析: {str(e)[:60]}")
+                    log(f"[{name}] 分析: {str(e)[:60]}")
 
                 if not matched_jobs:
                     try:
