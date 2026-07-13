@@ -369,8 +369,15 @@ new Vue({
     async saveFillResult(){this.fillResult={fields:this.fillFields};alert('填写结果已保存');},
     // Step 4 (Scout)
     async startScout(){
-      this.scoutRunning=true;this.scoutLog=[];this.scoutResults=[];
-      try{await fetch('/api/scout/start',{method:'POST'});this.pollScout()}catch(e){this.scoutRunning=false}
+      this.scoutRunning=true;this.scoutLog=['正在启动 Chrome...\n'];this.scoutResults=[];
+      try{
+        const loginR=await fetch('/api/scout/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:this.prefs.target_companies})});
+        const loginD=await loginR.json();
+        if(loginD.error){this.scoutLog.push('启动失败: '+loginD.error);this.scoutRunning=false;return}
+        this.scoutLog.push('Chrome 已启动，正在分析...');
+        await fetch('/api/scout/start',{method:'POST'});
+        this.pollScout()
+      }catch(e){this.scoutLog.push('出错: '+e.message);this.scoutRunning=false}
     },
     async pollScout(){
       if(!this.scoutRunning)return
