@@ -307,16 +307,18 @@ def _scout_worker(profile_text: str, preferences: dict):
                 except Exception as e:
                     log(f"[{name}] 标签页选择: {str(e)[:60]}")
 
-            # Get page title from snapshot
+            # Get page title via evaluate_script (fast, won't hang)
+            page_title = "招聘页面"
             try:
-                snapshot = chrome.call_tool("take_snapshot", {})
-                snapshot_str = str(snapshot)
-                # Extract page title from first line
-                page_title = "招聘页面"
-                first_line = snapshot_str.split("\n")[0] if snapshot_str else ""
-                if first_line:
-                    page_title = first_line[:60]
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(chrome.call_tool, "evaluate_script", {"script": "document.title"})
+                    result = future.result(timeout=8)
+                    if result:
+                        page_title = str(result)[:60]
                 log(f"[{name}] 已读取: {page_title}")
+            except concurrent.futures.TimeoutError:
+                log(f"[{name}] 读取超时，使用默认标题")
             except Exception as e:
                 log(f"[{name}] 读取页面失败: {e}")
 
