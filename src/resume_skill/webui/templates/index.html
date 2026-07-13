@@ -369,20 +369,17 @@ new Vue({
     async saveFillResult(){this.fillResult={fields:this.fillFields};alert('填写结果已保存');},
     // Step 4 (Scout)
     async startScout(){
-      this.scoutRunning=true;this.scoutLog=['正在启动 Chrome...\n'];this.scoutResults=[];
-      try{
-        const loginR=await fetch('/api/scout/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({companies:this.prefs.target_companies})});
-        const loginD=await loginR.json();
-        if(loginD.error){this.scoutLog.push('启动失败: '+loginD.error);this.scoutRunning=false;return}
-        this.scoutLog.push('Chrome 已启动，正在分析...');
-        await fetch('/api/scout/start',{method:'POST'});
-        this.pollScout()
-      }catch(e){this.scoutLog.push('出错: '+e.message);this.scoutRunning=false}
+      this.scoutRunning=true;this.scoutLog=[];this.scoutResults=[];
+      this.pollTimer=setTimeout(()=>this.pollScout(),1000);
+      try{await fetch('/api/scout/start',{method:'POST'})}catch(e){this.scoutLog.push('出错: '+e.message)}
     },
     async pollScout(){
       if(!this.scoutRunning)return
-      try{const r=await fetch('/api/scout/status');const d=await r.json();this.scoutLog=d.log||[];if(Array.isArray(d.results))this.scoutResults=d.results;
-      if(d.running)this.pollTimer=setTimeout(()=>this.pollScout(),1500);else this.scoutRunning=false}catch(e){this.scoutRunning=false}
+      try{const r=await fetch('/api/scout/status');const d=await r.json();this.scoutLog=d.log||['正在启动...'];
+      if(Array.isArray(d.results))this.scoutResults=d.results;
+      if(d.running)this.pollTimer=setTimeout(()=>this.pollScout(),1500);
+      else{this.scoutRunning=false;if(!this.scoutLog.length)this.scoutLog=['勘探已结束']}
+      }catch(e){this.scoutRunning=false}
     },
     addToApply(r){for(const j of(r.matched_jobs||[])){if(!this.applyList.some(a=>a.company===r.company&&a.link===j.link))this.applyList.push({company:r.company,title:j.title,link:j.link})}},
     // Step 5

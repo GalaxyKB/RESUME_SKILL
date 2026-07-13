@@ -174,26 +174,27 @@ def api_scout_login():
 
     global _chrome_instance
     from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
-    _chrome_instance = ChromeDevToolsClient(headless=False)
-    try:
-        print("[scout] 正在启动 Chrome...")
-        _chrome_instance.connect()
-        print(f"[scout] Chrome 已启动，正在打开 {len(companies)} 个页面...")
-        for i, c in enumerate(companies):
-            name = c.get("name", "?")
-            url = c.get("url", "")
-            if not url:
-                continue
-            if i == 0:
-                _chrome_instance.call_tool("navigate_page", {"url": url})
-            else:
-                _chrome_instance.call_tool("new_page", {"url": url})
-            print(f"[scout] 已打开 {name}: {url}")
-        return jsonify({"status": "opened", "count": len(companies)})
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": f"打开 Chrome 失败: {str(e)}"}), 500
+
+    def _open_chrome_background():
+        global _chrome_instance
+        _chrome_instance = ChromeDevToolsClient(headless=False)
+        try:
+            _chrome_instance.connect()
+            for i, c in enumerate(companies):
+                name = c.get("name", "?")
+                url = c.get("url", "")
+                if not url:
+                    continue
+                if i == 0:
+                    _chrome_instance.call_tool("navigate_page", {"url": url})
+                else:
+                    _chrome_instance.call_tool("new_page", {"url": url})
+        except Exception as e:
+            print(f"[scout] Chrome 启动失败: {e}")
+
+    thread = threading.Thread(target=_open_chrome_background, daemon=True)
+    thread.start()
+    return jsonify({"status": "starting", "message": "Chrome 正在后台启动，请等待..."})
 
 
 # ─── 网申填写 API ─────────────────────────────────────────
@@ -260,94 +261,70 @@ def api_fill_start():
 
 # ─── 勘探（Scout）API ─────────────────────────────────────
 
-def _scout_worker(profile_text: str, preferences: dict):
-    global _chrome_instance, _scout_progress
-    _scout_progress["running"] = True
-    _scout_progress["log"] = []
-    _scout_progress["results"] = []
-
-    def log(msg: str):
-        _scout_progress["log"].append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
-
-    chrome = _chrome_instance
-    if chrome is None:
-        log("错误：请先拉起公司官网进行登录")
-        _scout_progress["running"] = False
-        return
-
-    def _get_page_ids() -> list[int]:
-        try:
-            result = chrome.call_tool("list_pages", {})
-            text = str(result)
-            ids = []
-            for line in text.split("\n"):
-                if "pageId=" in line:
-                    import re
-                    m = re.search(r"pageId=(\d+)", line)
-                    if m:
-                        ids.append(int(m.group(1)))
-            return ids
-        except:
-            return list(range(1, 20))
-
-    # Simplified scout: read company pages and return as links
-    try:
-        page_ids = _get_page_ids()
-        companies = preferences.get("target_companies", [])
-        for i, company in enumerate(companies):
-            name = company.get("name", f"公司{i+1}")
-            url = company.get("url", "")
-            log(f"[{name}] 正在读取页面...")
-            
-            # Select the correct tab
-            if i > 0 and i < len(page_ids):
-                try:
-                    chrome.call_tool("select_page", {"pageId": page_ids[i]})
-                    time.sleep(1)
-                except Exception as e:
-                    log(f"[{name}] 标签页选择: {str(e)[:60]}")
-
-            # Get page title via evaluate_script (fast, won't hang)
-            page_title = "招聘页面"
-            try:
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    future = pool.submit(chrome.call_tool, "evaluate_script", {"script": "document.title"})
-                    result = future.result(timeout=8)
-                    if result:
-                        page_title = str(result)[:60]
-                log(f"[{name}] 已读取: {page_title}")
-            except concurrent.futures.TimeoutError:
-                log(f"[{name}] 读取超时，使用默认标题")
-            except Exception as e:
-                log(f"[{name}] 读取页面失败: {e}")
-
-            company_results = [
-                {"title": f"{name} - {page_title}", "link": url},
-            ]
-
-            _scout_progress["results"].append({
-                "company": name,
-                "url": url,
-                "matched_jobs": company_results,
-            })
-            log(f"[{name}] 完成")
-    except Exception as e:
-        log(f"勘探失败: {e}")
-    finally:
-        _scout_progress["running"] = False
-        log("勘探结束")
-
-
 @app.route("/api/scout/start", methods=["POST"])
 def api_scout_start():
-    global _scout_progress
+    global _scout_progress, _chrome_instance
     if _scout_progress.get("running"):
         return jsonify({"error": "勘探任务已在运行"}), 400
 
     md_path = CONFIG.personal_info_dir / "profile_template.md"
     profile_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
     prefs = _load_preferences()
+    companies = prefs.get("target_companies", [])
+
+    def _full_scout_worker():
+        global _chrome_instance, _scout_progress
+        _scout_progress["running"] = True
+        _scout_progress["log"] = []
+        _scout_progress["results"] = []
+
+        def log(msg):
+            _scout_progress["log"].append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+
+        log("正在启动 Chrome...")
+        from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
+        _chrome_instance = ChromeDevToolsClient(headless=False)
+        try:
+            _chrome_instance.connect()
+            log("Chrome 已启动")
+        except Exception as e:
+            log(f"Chrome 启动失败: {e}")
+            _scout_progress["running"] = False
+            return
+
+        for i, c in enumerate(companies[:3]):
+            name = c.get("name", f"公司{i+1}")
+            url = c.get("url", "")
+            if not url:
+                continue
+            log(f"[{name}] 打开页面...")
+            try:
+                if i == 0:
+                    _chrome_instance.call_tool("navigate_page", {"url": url})
+                else:
+                    _chrome_instance.call_tool("new_page", {"url": url})
+                time.sleep(2)
+                # Get title
+                try:
+                    title = _chrome_instance.call_tool("evaluate_script", {"script": "document.title"})
+                    page_title = str(title)[:60] if title else "招聘页面"
+                except:
+                    page_title = "招聘页面"
+                log(f"[{name}] 已打开: {page_title}")
+                _scout_progress["results"].append({
+                    "company": name,
+                    "url": url,
+                    "matched_jobs": [{"title": f"{name} - {page_title}", "link": url}],
+                })
+            except Exception as e:
+                log(f"[{name}] 出错: {str(e)[:60]}")
+
+        _scout_progress["running"] = False
+        log("勘探结束")
+
+    thread = threading.Thread(target=_full_scout_worker, daemon=True)
+    thread.start()
+    return jsonify({"status": "started"})
     if not prefs.get("target_companies"):
         return jsonify({"error": "请在偏好设置中至少添加一个目标公司"}), 400
 
