@@ -221,33 +221,47 @@ def api_fill_start():
         return jsonify({"error": "请先在步骤4中拉起 Chrome 并登录"}), 400
 
     try:
-        snapshot = chrome.call_tool("take_snapshot", {})
+        # Take snapshot with timeout
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(chrome.call_tool, "take_snapshot", {})
+            try:
+                snapshot = future.result(timeout=8)
+            except concurrent.futures.TimeoutError:
+                return jsonify({"error": "页面读取超时，请确认 Chrome 已打开且页面已加载"}), 504
+
         print(f"[fill] Snapshot: {len(str(snapshot))} chars")
 
-        # Parse snapshot to fields using the same logic as agent.py
         agent = MCPAgent.__new__(MCPAgent)
         fields = agent._parse_snapshot(str(snapshot))
         print(f"[fill] Found {len(fields)} form fields")
 
-        # Load MD profile and run LLM Q&A
+        # Load MD profile and run LLM Q&A (with timeout)
         md_path = CONFIG.personal_info_dir / "profile_template.md"
         profile_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
         if profile_text:
             from ..llm.factory import create_llm_client
             agent.profile = profile_text
             agent.llm = create_llm_client()
-            answers = agent._answer_fields(fields)
-            print(f"[fill] Got {len(answers)} LLM answers")
 
-            # Merge answers into fields
-            answer_map = {a.get("uid", ""): a for a in answers}
-            for f in fields:
-                uid = f.get("uid", "")
-                if uid in answer_map:
-                    ans = answer_map[uid]
-                    f["answer"] = ans.get("answer", "")
-                    f["confidence"] = ans.get("confidence", "low")
-                    f["action"] = ans.get("action", "fill")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(agent._answer_fields, fields)
+                try:
+                    answers = future.result(timeout=30)
+                except concurrent.futures.TimeoutError:
+                    answers = []
+                    print("[fill] LLM 匹配超时")
+
+            if answers:
+                print(f"[fill] Got {len(answers)} LLM answers")
+                answer_map = {a.get("uid", ""): a for a in answers}
+                for f in fields:
+                    uid = f.get("uid", "")
+                    if uid in answer_map:
+                        ans = answer_map[uid]
+                        f["answer"] = ans.get("answer", "")
+                        f["confidence"] = ans.get("confidence", "low")
+                        f["action"] = ans.get("action", "fill")
 
         if resume_path:
             os.unlink(resume_path)

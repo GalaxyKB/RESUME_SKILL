@@ -363,11 +363,15 @@ new Vue({
       const fd=new FormData();
       if(this.fillPdfFile)fd.append('resume',this.fillPdfFile);
       try{
-        const r=await fetch('/api/fill/start',{method:'POST',body:fd});
+        const controller=new AbortController();
+        const timeoutId=setTimeout(()=>controller.abort(),60000);
+        const r=await fetch('/api/fill/start',{method:'POST',body:fd,signal:controller.signal});
+        clearTimeout(timeoutId);
         const d=await r.json();
         if(d.fields)this.fillFields=d.fields;
-        else this.fillError=d.error||'填写失败'
-      }catch(e){this.fillError=e.message}this.filling=false
+        else this.fillError=d.error||'填写失败';
+        if(!this.fillFields.length&&!this.fillError)this.fillError='未识别到表单字段'
+      }catch(e){this.fillError='请求超时或失败: '+(e.message||'')}this.filling=false
     },
     async saveFillResult(){this.fillResult={fields:this.fillFields};alert('填写结果已保存');},
     // Step 4 (Scout)
