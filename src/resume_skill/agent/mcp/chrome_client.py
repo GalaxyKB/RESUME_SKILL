@@ -36,6 +36,7 @@ class ChromeDevToolsClient:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
             bufsize=1,
             shell=use_shell,
         )
