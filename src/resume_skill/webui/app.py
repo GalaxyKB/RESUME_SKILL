@@ -212,9 +212,9 @@ def api_fill_start():
     resume_path = ""
     if "resume" in request.files:
         f = request.files["resume"]
-        tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-        f.save(tmp.name)
-        resume_path = tmp.name
+        fd, resume_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        f.save(resume_path)
 
     chrome = _chrome_instance
     if chrome is None:
