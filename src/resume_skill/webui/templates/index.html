@@ -202,13 +202,16 @@ body{background:#f4f6f9;font-size:14px;color:#333}
     <div class="card">
       <div class="card-header">第 5 步 — AI 智能填写</div>
       <div class="card-body">
-        <p class="text-muted">在已经打开的 Chrome 浏览器中，手动导航到需要填写的投递页面，然后点击下方按钮让 AI 自动识别并填写。</p>
+        <div class="alert alert-info py-2">
+          <b>操作指引：</b>请在已经打开的 <b>Chrome 浏览器</b> 中，手动导航到需要填写的网申个人信息页面（如基本信息、教育背景等页面）。<br>
+          导航到位后，点击下方按钮，AI 会自动识别表单字段并填写。
+        </div>
         <div class="form-group">
-          <label>简历 PDF（用于上传附件）</label>
+          <label>简历 PDF（用于上传附件字段）</label>
           <input type="file" class="form-control-file" @change="onFillFileChange">
         </div>
         <button class="btn btn-primary btn-lg-action" @click="startFill" :disabled="filling">
-          {{filling ? '填写中...' : '🤖 AI 智能填写'}}
+          {{filling ? '填写中...' : 'AI 智能填写'}}
         </button>
         <div v-if="filling" class="progress mt-2" style="height:6px">
           <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#667eea"></div>

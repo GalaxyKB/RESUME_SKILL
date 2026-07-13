@@ -281,46 +281,84 @@ def api_scout_start():
         def log(msg):
             _scout_progress["log"].append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-        log("正在启动 Chrome...")
-        from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
-        _chrome_instance = ChromeDevToolsClient(headless=False)
-        try:
-            _chrome_instance.connect()
-            log("Chrome 已启动")
-        except Exception as e:
-            log(f"Chrome 启动失败: {e}")
-            _scout_progress["running"] = False
-            return
+        # 复用已有 Chrome 或新建
+        if _chrome_instance is None:
+            log("正在启动 Chrome...")
+            from resume_skill.agent.mcp.chrome_client import ChromeDevToolsClient
+            _chrome_instance = ChromeDevToolsClient(headless=False)
+            try:
+                _chrome_instance.connect()
+                log("Chrome 已启动（全程保持，不会关闭）")
+            except Exception as e:
+                log(f"Chrome 启动失败: {e}")
+                _scout_progress["running"] = False
+                return
+        else:
+            log("使用已有的 Chrome 会话")
+
+        from resume_skill.llm.factory import create_llm_client
+        llm = create_llm_client()
 
         for i, c in enumerate(companies[:3]):
             name = c.get("name", f"公司{i+1}")
             url = c.get("url", "")
             if not url:
                 continue
+
+            matched_jobs = []
             log(f"[{name}] 打开页面...")
             try:
                 if i == 0:
                     _chrome_instance.call_tool("navigate_page", {"url": url})
                 else:
                     _chrome_instance.call_tool("new_page", {"url": url})
-                time.sleep(2)
-                # Get title
+                time.sleep(3)
+
+                # LLM 提取页面中的岗位列表
+                import concurrent.futures
                 try:
-                    title = _chrome_instance.call_tool("evaluate_script", {"script": "document.title"})
-                    page_title = str(title)[:60] if title else "招聘页面"
-                except:
-                    page_title = "招聘页面"
-                log(f"[{name}] 已打开: {page_title}")
+                    snapshot = _chrome_instance.call_tool("take_snapshot", {})
+                    prompt = f"""分析以下招聘页面的无障碍树，提取出所有可见的岗位信息（标题）。只返回JSON。
+页面：{name} ({url})
+无障碍树：{str(snapshot)[:5000]}
+
+返回格式：{{"jobs":[{{"title":"岗位名称"}}]}}"""
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                        future = pool.submit(llm.call_json, "", prompt)
+                        result = future.result(timeout=20)
+                        raw_jobs = result.get("jobs", []) if isinstance(result, dict) else []
+                        matched_jobs = [{"title": j["title"], "link": url} for j in raw_jobs[:8]]
+                        if matched_jobs:
+                            log(f"[{name}] LLM 分析到 {len(matched_jobs)} 个岗位")
+                except concurrent.futures.TimeoutError:
+                    log(f"[{name}] LLM 分析超时，使用页面标题")
+                except Exception as e:
+                    log(f"[{name}] LLM 分析: {str(e)[:60]}")
+
+                if not matched_jobs:
+                    try:
+                        title = _chrome_instance.call_tool("evaluate_script", {"script": "document.title"})
+                        page_title = str(title)[:60] if title else name
+                        matched_jobs = [{"title": f"{name} - {page_title}", "link": url}]
+                    except:
+                        matched_jobs = [{"title": name, "link": url}]
+
                 _scout_progress["results"].append({
                     "company": name,
                     "url": url,
-                    "matched_jobs": [{"title": f"{name} - {page_title}", "link": url}],
+                    "matched_jobs": matched_jobs,
                 })
+                log(f"[{name}] 完成")
             except Exception as e:
-                log(f"[{name}] 出错: {str(e)[:60]}")
+                log(f"[{name}] 出错: {str(e)[:80]}")
+                _scout_progress["results"].append({
+                    "company": name,
+                    "url": url,
+                    "matched_jobs": [{"title": name, "link": url}],
+                })
 
         _scout_progress["running"] = False
-        log("勘探结束")
+        log("勘探结束（Chrome 保持打开，可继续后续步骤）")
 
     thread = threading.Thread(target=_full_scout_worker, daemon=True)
     thread.start()
