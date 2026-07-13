@@ -221,22 +221,17 @@ def api_fill_start():
         return jsonify({"error": "请先在步骤4中拉起 Chrome 并登录"}), 400
 
     try:
-        # Take snapshot with timeout
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(chrome.call_tool, "take_snapshot", {})
-            try:
-                snapshot = future.result(timeout=8)
-            except concurrent.futures.TimeoutError:
-                return jsonify({"error": "页面读取超时，请确认 Chrome 已打开且页面已加载"}), 504
+        snapshot = chrome.call_tool("take_snapshot", {}, timeout=10)
+        if not snapshot:
+            return jsonify({"error": "页面读取为空，请确认 Chrome 已打开且页面已加载"}), 504
 
-        print(f"[fill] Snapshot: {len(str(snapshot))} chars")
+        text = str(snapshot)
+        print(f"[fill] Snapshot: {len(text)} chars")
 
         agent = MCPAgent.__new__(MCPAgent)
-        fields = agent._parse_snapshot(str(snapshot))
+        fields = agent._parse_snapshot(text)
         print(f"[fill] Found {len(fields)} form fields")
 
-        # Load MD profile and run LLM Q&A (with timeout)
         md_path = CONFIG.personal_info_dir / "profile_template.md"
         profile_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
         if profile_text:
@@ -244,13 +239,14 @@ def api_fill_start():
             agent.profile = profile_text
             agent.llm = create_llm_client()
 
+            import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(agent._answer_fields, fields)
                 try:
                     answers = future.result(timeout=30)
                 except concurrent.futures.TimeoutError:
                     answers = []
-                    print("[fill] LLM 匹配超时")
+                    print("[fill] LLM 匹配超时，返回未匹配字段")
 
             if answers:
                 print(f"[fill] Got {len(answers)} LLM answers")
@@ -268,6 +264,8 @@ def api_fill_start():
 
         return jsonify({"fields": fields, "count": len(fields)})
 
+    except TimeoutError:
+        return jsonify({"error": "操作超时"}), 504
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
@@ -351,8 +349,9 @@ def api_scout_start():
 
                 if not matched_jobs:
                     try:
-                        title = _chrome_instance.call_tool("evaluate_script", {"script": "document.title"})
-                        page_title = str(title)[:60] if title else name
+                        snap = _chrome_instance.call_tool("take_snapshot", {}, timeout=10)
+                        first_line = str(snap).split("\n")[0] if snap else ""
+                        page_title = first_line[:60] if first_line else name
                         matched_jobs = [{"title": f"{name} - {page_title}", "link": url}]
                     except:
                         matched_jobs = [{"title": name, "link": url}]
