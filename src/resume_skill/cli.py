@@ -94,8 +94,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     if args.use_mcp:
         from .agent.mcp.agent import run_agent
-        # v2.4暂时不支持resume功能
-        run_agent(url, headless=args.headless)
+        run_agent(url, resume_from=args.resume, headless=args.headless)
         return 0
 
     from .agent.workflow import run_apply_flow, RunOptions

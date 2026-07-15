@@ -81,7 +81,7 @@ class MCPAgent:
 
         返回: [{uid, label, type, options}, ...]
         """
-        form_roles = {"textbox", "combobox", "textarea", "searchbox", "listbox", "checkbox", "radio"}
+        form_roles = {"textbox", "combobox", "textarea", "searchbox", "listbox", "checkbox", "radio", "button"}
         type_map = {
             "combobox": "select",
             "listbox": "select",
@@ -90,19 +90,31 @@ class MCPAgent:
             "searchbox": "text",
             "checkbox": "checkbox",
             "radio": "radio",
+            "button": "button",
         }
 
         fields = []
         for line in snapshot_text.split("\n"):
             line = line.strip()
-            # 匹配: role "label" uid=xxx
+            # 支持旧格式 `textbox "姓名" uid=1_5` 和新版 `uid=1_5 textbox "姓名"`。
             m = re.match(r'(\w+)\s+"([^"]*)"\s+uid=([\w_]+)', line)
             if not m:
-                continue
-            role, label, uid = m.group(1), m.group(2), m.group(3)
+                m = re.match(r'uid=([\w_]+)\s+(\w+)\s+"([^"]*)"', line)
+                if m:
+                    uid, role, label = m.group(1), m.group(2), m.group(3)
+                else:
+                    continue
+            else:
+                role, label, uid = m.group(1), m.group(2), m.group(3)
 
             if role not in form_roles:
                 continue
+
+            field_type = type_map.get(role, "text")
+            if role == "button" and not re.search(r"上传|附件|简历|resume|upload|file", label, re.I):
+                continue
+            if role == "button":
+                field_type = "file"
 
             # 提取 options（combobox 可能有 options="a,b,c"）
             options = []
@@ -114,7 +126,7 @@ class MCPAgent:
                 {
                     "uid": uid,
                     "label": label,
-                    "type": type_map.get(role, "text"),
+                    "type": field_type,
                     "options": options,
                 }
             )

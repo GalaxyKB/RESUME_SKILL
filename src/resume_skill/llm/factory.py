@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import AppConfig, CONFIG
+from .ark_provider import ArkResponsesProvider
 from .base import BaseLLMClient
 from .deepseek_provider import DeepSeekProvider
 from .openai_provider import OpenAIProvider
@@ -16,6 +17,17 @@ def create_llm_client(config: AppConfig | None = None, outputs_dir: Path | None 
     parse_error_dir = log_dir / "json_parse_errors"
 
     provider = cfg.llm.provider.lower()
+
+    if provider in {"ark", "doubao", "volcengine"}:
+        if not cfg.llm.ark_api_key:
+            raise RuntimeError("Ark API key not configured. Set ARK_API_KEY in .env.")
+        return ArkResponsesProvider(
+            api_key=cfg.llm.ark_api_key,
+            base_url=cfg.llm.ark_base_url,
+            model=cfg.llm.ark_model,
+            log_path=log_path,
+            parse_error_dir=parse_error_dir,
+        )
 
     if provider == "openai":
         if not cfg.llm.openai_api_key:

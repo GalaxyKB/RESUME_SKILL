@@ -73,9 +73,13 @@ class PersonalInfoExtractor:
 
         print(f"       Extracted {len(pdf_text)} characters")
 
+        fallback_text = self._extract_basic_profile_from_text(pdf_text)
+
         if not self.llm_client:
-            print("[ERROR] No LLM client available. Set API key in .env first.")
-            return {}
+            print("[WARNING] No LLM client available. Using local PDF text extraction fallback.")
+            if output_to_template:
+                self._write_profile_template(fallback_text)
+            return {"extracted_text": fallback_text, "source": "local_fallback"}
 
         print("[2/3] AI analyzing resume content...")
         extraction_prompt = f"""你是专业简历解析AI。请从以下简历中提取**所有信息**，不能有任何遗漏。
@@ -141,18 +145,55 @@ class PersonalInfoExtractor:
         try:
             extracted_text = self.llm_client.call_text("", extraction_prompt)
         except Exception as e:
-            print(f"[ERROR] LLM call failed: {e}")
-            return {}
+            print(f"[WARNING] LLM call failed: {e}. Using local PDF text extraction fallback.")
+            if output_to_template:
+                self._write_profile_template(fallback_text)
+            return {"extracted_text": fallback_text, "source": "local_fallback", "warning": str(e)}
 
         if not extracted_text:
-            print("[ERROR] LLM returned empty result")
-            return {}
+            print("[WARNING] LLM returned empty result. Using local PDF text extraction fallback.")
+            if output_to_template:
+                self._write_profile_template(fallback_text)
+            return {"extracted_text": fallback_text, "source": "local_fallback"}
 
         print("[3/3] Writing profile template...")
         if output_to_template:
             self._write_profile_template(extracted_text)
 
         return {"extracted_text": extracted_text}
+
+    def _extract_basic_profile_from_text(self, pdf_text: str) -> str:
+        """Extract enough structured information locally when the LLM is unavailable."""
+        lines = [line.strip() for line in pdf_text.splitlines() if line.strip()]
+        compact_text = "\n".join(lines)
+
+        email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", compact_text)
+        phone_match = re.search(r"(?<!\d)(?:\+?86[-\s]?)?1[3-9]\d[-\s]?\d{4}[-\s]?\d{4}(?!\d)", compact_text)
+        link_matches = re.findall(r"https?://[^\s)）]+|(?:github|linkedin)\.com/[^\s)）]+", compact_text, re.I)
+
+        name = ""
+        for line in lines[:12]:
+            cleaned = re.sub(r"\s+", "", line)
+            if 2 <= len(cleaned) <= 8 and re.fullmatch(r"[\u4e00-\u9fffA-Za-z·.]+", cleaned):
+                if not any(word in cleaned.lower() for word in ["resume", "cv", "简历", "个人"]):
+                    name = line
+                    break
+
+        sections = []
+        if name:
+            sections.append(f"- **姓名**: {name}")
+        if email_match:
+            sections.append(f"- **邮箱**: {email_match.group(0)}")
+        if phone_match:
+            sections.append(f"- **手机号**: {phone_match.group(0)}")
+        for idx, link in enumerate(dict.fromkeys(link_matches), start=1):
+            sections.append(f"- **链接{idx}**: {link}")
+
+        sections.append("- **原始简历文本**:")
+        for line in lines:
+            sections.append(f"  - {line}")
+
+        return "\n".join(sections)
 
     def _write_profile_template(self, extracted_content: str) -> None:
         """Write profile_template.md with extracted content + supplement sections."""

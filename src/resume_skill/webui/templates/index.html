@@ -6,76 +6,80 @@
 <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.7.16/vue.min.js"></script>
 <style>
-body{background:#f4f6f9;font-size:14px;color:#333}
-.navbar-brand b{font-size:18px}
-.main-area{max-width:960px;margin:24px auto 60px}
-/* Steps */
-.steps{display:flex;margin-bottom:28px}
-.step-item{flex:1;text-align:center;position:relative;padding:0 8px}
-.step-item .circle{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border:2px solid #ccc;color:#999;background:#fff}
-.step-item.active .circle{border-color:#667eea;color:#fff;background:#667eea}
-.step-item.done .circle{border-color:#4caf50;color:#fff;background:#4caf50}
-.step-item .label{margin-top:6px;font-size:12px;color:#888}
-.step-item.active .label,.step-item.done .label{color:#333;font-weight:600}
-.step-line{position:absolute;top:18px;left:50%;right:-50%;height:2px;background:#ddd;z-index:-1}
-.step-item.done .step-line{background:#4caf50}
-/* Cards */
-.card{border:none;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:20px}
-.card-header{background:#fff;border-bottom:1px solid #f0f0f0;font-weight:700;font-size:15px;padding:14px 20px}
-.card-body{padding:20px}
-/* Buttons */
-.btn-primary{background:#667eea;border:none}
-.btn-primary:hover{background:#5a6fd6}
-.btn-outline-primary{border-color:#667eea;color:#667eea}
-.btn-success{background:#4caf50;border:none}
-.btn-lg-action{padding:10px 28px;font-size:15px;min-width:160px}
-/* Status */
-.status-badge{padding:4px 12px;border-radius:12px;font-size:12px}
-.status-pending{background:#fff3e0;color:#e65100}
-.status-done{background:#e8f5e9;color:#2e7d32}
-.status-error{background:#ffebee;color:#c62828}
-/* Textarea */
-.editor-area{min-height:320px;font-family:Consolas,monospace;font-size:13px;line-height:1.6}
-/* Log */
-.log-box{background:#1a1a2e;color:#8f8;font-family:monospace;font-size:12px;padding:12px;border-radius:6px;max-height:250px;overflow:auto;white-space:pre-wrap}
-/* Tags */
-.comp-tag{background:#e8f4fd;color:#2c7be5;padding:3px 10px;border-radius:14px;margin:2px;display:inline-block;font-size:13px}
-.comp-tag .rm{cursor:pointer;margin-left:6px;opacity:.4}
-.comp-tag .rm:hover{opacity:1}
+:root{--bg:#eef2f6;--panel:#fff;--border:#d9e1ea;--text:#1f2933;--muted:#64748b;--primary:#2563eb;--success:#15803d;--warning:#b45309;--danger:#b91c1c}
+*{box-sizing:border-box}
+[v-cloak]{display:none!important}
+body{background:var(--bg);font-size:14px;color:var(--text);margin:0}
+.topbar{height:58px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:20;box-shadow:0 1px 4px rgba(15,23,42,.18)}
+.brand{display:flex;align-items:baseline;gap:10px;font-weight:700;font-size:18px;letter-spacing:0}
+.brand small{color:#cbd5e1;font-weight:400}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;max-width:1360px;margin:0 auto;padding:24px}
+.sidebar{position:sticky;top:82px;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.step-item{width:100%;display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;border:0;background:transparent;text-align:left;padding:11px 10px;border-radius:7px;color:var(--muted);cursor:pointer}
+.step-item:hover{background:#f1f5f9;color:var(--text)}
+.step-item.active{background:#dbeafe;color:#1d4ed8;font-weight:700}
+.step-item.done{color:var(--success)}
+.circle{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;border:1px solid #cbd5e1;background:#fff;color:#64748b}
+.step-item.active .circle{border-color:var(--primary);background:var(--primary);color:#fff}
+.step-item.done .circle{border-color:var(--success);background:#dcfce7;color:var(--success)}
+.label{font-size:14px;line-height:1.25}
+.workspace{min-width:0}
+.page-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}
+.page-title h1{font-size:22px;line-height:1.25;margin:0;color:#111827}
+.page-title p{margin:4px 0 0;color:var(--muted)}
+.card{border:1px solid var(--border);border-radius:8px;box-shadow:0 1px 2px rgba(15,23,42,.04);margin-bottom:16px}
+.card-header{background:#fff;border-bottom:1px solid var(--border);font-weight:700;font-size:15px;padding:14px 18px}
+.card-body{padding:18px}
+.btn-primary{background:var(--primary);border:none}
+.btn-primary:hover{background:#1d4ed8}
+.btn-outline-primary{border-color:var(--primary);color:var(--primary)}
+.btn-success{background:var(--success);border:none}
+.btn-lg-action{padding:10px 22px;font-size:15px;min-width:148px}
+.action-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;clear:both}
+.action-row .left,.action-row .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.status-badge{display:inline-flex;align-items:center;max-width:100%;padding:5px 11px;border-radius:999px;font-size:12px;line-height:1.3;white-space:normal}
+.status-pending{background:#fffbeb;color:var(--warning)}
+.status-done{background:#dcfce7;color:var(--success)}
+.status-error{background:#fee2e2;color:var(--danger)}
+.editor-area{min-height:420px;font-family:Consolas,monospace;font-size:13px;line-height:1.6;resize:vertical}
+.log-box{background:#111827;color:#86efac;font-family:Consolas,monospace;font-size:12px;padding:12px;border-radius:6px;max-height:280px;overflow:auto;white-space:pre-wrap}
+.data-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:8px;background:#f8fafc}
+.data-row-main{min-width:0;flex:1}
+.data-row-main .small,.data-row-main a{word-break:break-all}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:7px}
+.table-wrap table{margin-bottom:0}
+@media (max-width:900px){.topbar{padding:0 16px}.shell{display:block;padding:16px}.sidebar{position:static;margin-bottom:16px}.step-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.step-item{padding:9px}.page-title{display:block}.action-row{align-items:stretch;flex-direction:column}.action-row .left,.action-row .right{width:100%}.btn-lg-action{width:100%}}
+@media (max-width:520px){.step-list{grid-template-columns:1fr}.data-row{align-items:flex-start;flex-direction:column}.card-body{padding:14px}.page-title h1{font-size:19px}}
 </style>
 </head>
 <body>
-<div id="app">
-<nav class="navbar navbar-dark" style="background:linear-gradient(135deg,#667eea,#764ba2)">
-  <span class="navbar-brand"><b>RESUME_SKILL</b> <small class="text-white-50">v2.4</small></span>
-</nav>
+<div id="bootError" style="display:none;padding:16px;background:#fee2e2;color:#991b1b;font-size:14px">
+  前端运行库加载失败。请检查网络是否能访问 Vue CDN，或刷新页面重试。
+</div>
+<noscript><div style="padding:16px;background:#fee2e2;color:#991b1b">需要启用 JavaScript 才能使用 RESUME_SKILL WebUI。</div></noscript>
+<div id="app" v-cloak>
+<header class="topbar">
+  <div class="brand"><span>RESUME_SKILL</span><small>v2.4</small></div>
+  <div class="small text-white-50">智能简历与网申工作台</div>
+</header>
 
-<div class="main-area container-fluid">
+<div class="shell">
+  <aside class="sidebar">
+    <div class="step-list">
+      <button type="button" class="step-item" :class="{active:step===1,done:step>1}" @click="step=1"><span class="circle">1</span><span class="label">上传简历</span></button>
+      <button type="button" class="step-item" :class="{active:step===2,done:step>2}" @click="step=2"><span class="circle">2</span><span class="label">审核档案</span></button>
+      <button type="button" class="step-item" :class="{active:step===3,done:step>3}" @click="step=3"><span class="circle">3</span><span class="label">求职偏好</span></button>
+      <button type="button" class="step-item" :class="{active:step===4,done:step>4}" @click="step=4"><span class="circle">4</span><span class="label">岗位勘探</span></button>
+      <button type="button" class="step-item" :class="{active:step===5,done:step>5}" @click="step=5"><span class="circle">5</span><span class="label">网申填写</span></button>
+      <button type="button" class="step-item" :class="{active:step===6,done:step>6}" @click="step=6"><span class="circle">6</span><span class="label">批量投递</span></button>
+    </div>
+  </aside>
 
-  <!-- Steps -->
-  <div class="steps">
-    <div class="step-item" :class="{active:step===1,done:step>1}">
-      <div class="circle">1</div><div class="label">上传简历</div>
-      <div class="step-line"></div>
-    </div>
-    <div class="step-item" :class="{active:step===2,done:step>2}">
-      <div class="circle">2</div><div class="label">审核档案</div>
-      <div class="step-line"></div>
-    </div>
-    <div class="step-item" :class="{active:step===3,done:step>3}">
-      <div class="circle">3</div><div class="label">求职偏好</div>
-      <div class="step-line"></div>
-    </div>
-    <div class="step-item" :class="{active:step===4,done:step>4}">
-      <div class="circle">4</div><div class="label">岗位勘探</div>
-      <div class="step-line"></div>
-    </div>
-    <div class="step-item" :class="{active:step===5,done:step>5}">
-      <div class="circle">5</div><div class="label">网申填写</div>
-      <div class="step-line"></div>
-    </div>
-    <div class="step-item" :class="{active:step===6,done:step>6}">
-      <div class="circle">6</div><div class="label">批量投递</div>
+  <main class="workspace">
+  <div class="page-title">
+    <div>
+      <h1>{{stepTitle}}</h1>
+      <p>{{stepSubtitle}}</p>
     </div>
   </div>
 
@@ -88,14 +92,16 @@ body{background:#f4f6f9;font-size:14px;color:#333}
           <input type="file" class="custom-file-input" id="pdfFile" accept=".pdf" @change="onFileChange">
           <label class="custom-file-label" for="pdfFile">{{pdfName || '选择 PDF 简历文件'}}</label>
         </div>
-        <div class="d-flex align-items-center mb-3">
-          <button class="btn btn-primary btn-lg-action mr-3" @click="doExtract" :disabled="!pdfFile || extracting">
+        <div class="action-row mb-3">
+          <div class="left">
+          <button class="btn btn-primary btn-lg-action" @click="doExtract" :disabled="!pdfFile || extracting">
             <span v-if="extracting">提取中...</span>
             <span v-else>AI 智能提取</span>
           </button>
           <span :class="'status-badge '+(extractOK?'status-done':extractErr?'status-error':'status-pending')">
             {{extractOK ? '提取完成' : extractErr ? '提取失败: '+extractErr : '等待提取'}}
           </span>
+          </div>
         </div>
         <div v-if="extracting" class="progress" style="height:6px">
           <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#667eea"></div>
@@ -106,7 +112,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         </div>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=2" :disabled="!extractOK">下一步 → 审核档案</button>
+    <div class="action-row"><div class="left"></div><div class="right"><button class="btn btn-success btn-lg-action" @click="step=2" :disabled="!extractOK">下一步：审核档案</button></div></div>
   </div>
 
   <!-- Step 2: Review MD & Fill Missing Fields ------------------------------------>
@@ -153,7 +159,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         </div>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=3">下一步 → 求职偏好</button>
+    <div class="action-row"><div class="left"><button class="btn btn-outline-secondary" @click="step=1">上一步</button></div><div class="right"><button class="btn btn-success btn-lg-action" @click="step=3">下一步：求职偏好</button></div></div>
   </div>
 
   <!-- Step 3: Preferences -------------------------------------------------------->
@@ -183,10 +189,9 @@ body{background:#f4f6f9;font-size:14px;color:#333}
           <div class="col-md-6 mb-1"><input class="form-control" v-model="newCompanyUrl" placeholder="招聘官网 URL 如 https://jobs.bytedance.com/"></div>
           <div class="col-md-2"><button class="btn btn-success btn-block" @click="addCompany">添加</button></div>
         </div>
-        <div v-for="(c,i) in prefs.target_companies" :key="i" class="d-flex align-items-center border rounded p-2 mb-1 bg-light">
-          <div class="mr-2"><b>{{c.name}}</b></div>
-          <div class="text-muted small flex-grow-1">{{c.url}}</div>
-          <div><span class="badge badge-danger" style="cursor:pointer" @click="removeCompany(i)">删除</span></div>
+        <div v-for="(c,i) in prefs.target_companies" :key="i" class="data-row">
+          <div class="data-row-main"><b>{{c.name}}</b><div class="text-muted small">{{c.url}}</div></div>
+          <button class="btn btn-sm btn-outline-danger" @click="removeCompany(i)">删除</button>
         </div>
         <button class="btn btn-primary mt-3" @click="savePreferences" :disabled="savingPrefs">
           {{savingPrefs ? '保存中...' : '保存偏好'}}
@@ -194,7 +199,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
         <span v-if="prefsSaved" class="ml-2 text-success">已保存</span>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=4">下一步 → 岗位勘探</button>
+    <div class="action-row"><div class="left"><button class="btn btn-outline-secondary" @click="step=2">上一步</button></div><div class="right"><button class="btn btn-success btn-lg-action" @click="step=4">下一步：岗位勘探</button></div></div>
   </div>
 
   <!-- Step 5: Form Filling ------------------------------------------------------->
@@ -210,30 +215,58 @@ body{background:#f4f6f9;font-size:14px;color:#333}
           <label>简历 PDF（用于上传附件字段）</label>
           <input type="file" class="form-control-file" @change="onFillFileChange">
         </div>
-        <button class="btn btn-primary btn-lg-action" @click="startFill" :disabled="filling">
-          {{filling ? '填写中...' : 'AI 智能填写'}}
-        </button>
-        <div v-if="filling" class="progress mt-2" style="height:6px">
+        <div class="action-row mb-2">
+          <div class="left">
+            <button class="btn btn-primary btn-lg-action" @click="startFill" :disabled="fillRunning">
+              {{fillRunning ? '执行中...' : 'AI 智能填写'}}
+            </button>
+            <button v-if="fillRunning" class="btn btn-warning btn-sm" @click="cancelFill">取消</button>
+            <span v-if="fillStatus" class="text-muted small">{{fillStatus}}</span>
+          </div>
+        </div>
+        <div v-if="fillRunning" class="progress mt-2" style="height:6px">
           <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%;background:#667eea"></div>
         </div>
+        <div v-if="fillCurrentTask" class="small text-muted mt-2">当前任务：{{fillCurrentTask}}</div>
+        <div v-if="fillTaskId" class="small text-muted mt-1">任务 ID：{{fillTaskId}}</div>
+        <div v-if="fillTaskLog.length" class="mt-3">
+          <small class="text-muted">任务日志（最近20条）：</small>
+          <div class="log-box">{{fillTaskLog.join('\n')}}</div>
+        </div>
+        <div v-if="fillExecutionHistory.length" class="mt-3">
+          <small class="text-muted">执行历史：</small>
+          <div class="log-box">{{fillExecutionHistory.map(formatHistory).join('\n')}}</div>
+        </div>
         <div v-if="fillError" class="alert alert-danger mt-2 py-2">{{fillError}}</div>
+        <div v-if="fillDone" :class="'alert mt-2 py-2 '+(fillSuccess?'alert-success':'alert-danger')">
+          {{fillSuccess ? '视觉验收通过，本轮填写成功' : '视觉验收未通过，本轮仍需修正'}}
+          <span v-if="failedCount">失败/待确认字段：{{failedCount}} 个</span>
+        </div>
+        <div v-if="visionReview.summary" :class="'alert mt-2 py-2 '+(visionReview.ok?'alert-success':'alert-warning')">
+          <b>视觉评估：</b>{{visionReview.summary}}
+          <div v-for="(it,i) in (visionReview.issues||[])" :key="i" class="small mt-1">
+            {{it.label || it.uid}}：{{it.problem}} {{it.suggestion ? '建议：'+it.suggestion : ''}}
+          </div>
+        </div>
         <div v-if="fillFields.length" class="mt-3">
-          <h6>填写结果（可直接编辑修改）</h6>
+          <h6>填写结果（共 {{fillFields.length}} 项，可直接编辑修改）</h6>
           <div v-for="(f,i) in fillFields" :key="i" class="border rounded p-2 mb-2 bg-light">
             <div class="d-flex justify-content-between">
-              <span class="font-weight-bold">{{f.label}}</span>
-              <span :class="'badge '+(f.action==='manual'?'badge-warning':f.confidence==='high'?'badge-success':'badge-info')">
-                {{f.action==='manual' ? '需手动' : f.confidence || 'auto'}}
+              <span class="font-weight-bold">{{f.label || f.uid}}</span>
+              <span :class="'badge '+(f.action==='manual'?'badge-warning':f.filled?'badge-success':f.fill_error?'badge-danger':'badge-info')">
+                {{f.action==='manual' ? '需手动' : f.action==='upload_file' && f.filled ? '已上传' : f.action==='click' && f.filled ? '已勾选' : f.filled ? '已填写' : f.action==='skip' ? '已跳过' : '未确认'}}
               </span>
             </div>
-            <input class="form-control mt-1" v-model="f.answer" :disabled="f.action==='manual' || false">
+            <input class="form-control mt-1" v-model="f.answer" :disabled="f.action==='manual' || f.action==='upload_file'">
+            <small class="text-muted">uid={{f.uid}} · type={{f.type || 'text'}} · action={{f.action || 'fill'}}</small>
             <small v-if="f.action==='manual'" class="text-warning">敏感字段，请手动填写</small>
+            <small v-if="f.fill_error" class="text-danger">填写失败：{{f.fill_error}}</small>
           </div>
           <button class="btn btn-success mt-2" @click="saveFillResult">保存结果</button>
         </div>
       </div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right" @click="step=6">下一步 → 批量投递</button>
+    <div class="action-row"><div class="left"><button class="btn btn-outline-secondary" @click="step=4">上一步</button></div><div class="right"><button class="btn btn-success btn-lg-action" @click="step=6">下一步：批量投递</button></div></div>
   </div>
 
   <!-- Step 4: Scout ------------------------------------------------------------->
@@ -241,9 +274,8 @@ body{background:#f4f6f9;font-size:14px;color:#333}
     <div class="card" v-if="prefs.target_companies.length">
       <div class="card-header">第 4 步 — 岗位勘探</div>
       <div class="card-body">
-        <div v-for="(c,i) in prefs.target_companies" :key="i" class="d-flex align-items-center border rounded p-2 mb-1 bg-light">
-          <div class="mr-2"><b>{{c.name}}</b></div>
-          <div class="text-muted small flex-grow-1">{{c.url}}</div>
+        <div v-for="(c,i) in prefs.target_companies" :key="i" class="data-row">
+          <div class="data-row-main"><b>{{c.name}}</b><div class="text-muted small">{{c.url}}</div></div>
         </div>
 
         <button class="btn btn-primary btn-lg-action mt-3" @click="startScout" :disabled="scoutRunning">
@@ -258,7 +290,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
           <small class="text-muted">日志：</small>
           <div class="log-box">{{scoutLog.length ? scoutLog.join('\n') : '正在启动...\n'}}</div>
         </div>
-        <div v-if="scoutResults.length" class="mt-3">
+        <div v-if="scoutResults.length" class="table-wrap mt-3">
           <table class="table table-sm table-hover">
             <thead><tr><th>公司</th><th>链接</th><th>操作</th></tr></thead>
             <tbody>
@@ -274,7 +306,7 @@ body{background:#f4f6f9;font-size:14px;color:#333}
     <div v-if="!prefs.target_companies.length" class="card">
       <div class="card-body"><p class="text-muted">请先在上一页添加目标公司。</p></div>
     </div>
-    <button class="btn btn-success btn-lg-action float-right mt-2" @click="step=5">下一步 → 网申填写</button>
+    <div class="action-row"><div class="left"><button class="btn btn-outline-secondary" @click="step=3">上一步</button></div><div class="right"><button class="btn btn-success btn-lg-action" @click="step=5">下一步：网申填写</button></div></div>
   </div>
 
   <!-- Step 6: Apply ------------------------------------------------------------->
@@ -283,21 +315,23 @@ body{background:#f4f6f9;font-size:14px;color:#333}
       <div class="card-header">第 6 步 — 批量投递</div>
       <div class="card-body">
         <div v-if="applyList.length===0" class="text-muted mb-2">从勘探结果添加岗位到投递列表</div>
-        <div v-for="(item,i) in applyList" :key="i" class="d-flex justify-content-between align-items-center border rounded p-2 mb-1">
-          <span><b>{{item.company}}</b> — {{item.title}}</span>
-          <span class="badge badge-danger" style="cursor:pointer" @click="removeFromApply(i)">x</span>
+        <div v-for="(item,i) in applyList" :key="i" class="data-row">
+          <div class="data-row-main"><b>{{item.company}}</b><div class="small text-muted">{{item.title}}</div></div>
+          <button class="btn btn-sm btn-outline-danger" @click="removeFromApply(i)">移除</button>
         </div>
         <button class="btn btn-primary btn-lg-action mt-3" @click="startApply" :disabled="applying||applyList.length===0">
           {{applying ? '投递中...' : '开始批量投递 ('+applyList.length+'个)'}}
         </button>
       </div>
     </div>
+    <div class="action-row"><div class="left"><button class="btn btn-outline-secondary" @click="step=5">上一步</button></div><div class="right"></div></div>
   </div>
 
-</div><!-- main -->
+  </main>
 </div><!-- app -->
 
 <script>
+setTimeout(function(){if(!window.Vue){var el=document.getElementById('bootError');if(el)el.style.display='block'}},1500);
 new Vue({
   el:'#app',
   data:{
@@ -310,14 +344,25 @@ new Vue({
     // Step 3
     prefs:{personal_info:{base_city:'',job_type:'校招',preferred_industries:[]},target_companies:[]},
     newCompanyName:'',newCompanyUrl:'',savingPrefs:false,prefsSaved:false,
-    // Step 5 (Form Filling)
-    fillPdfFile:null,filling:false,fillError:'',fillFields:[],fillResult:null,
+    // Step 5 (Form Filling - Background Task Mode)
+    fillPdfFile:null,filling:false,fillStatus:'',fillError:'',fillFields:[],fillResult:null,visionReview:{},fillDone:false,fillSuccess:false,failedCount:0,
+    fillTaskId:'',fillPollTimer:null,fillTaskLog:[],fillExecutionHistory:[],fillCurrentTask:'',fillRunning:false,
     // Step 4 (Scout)
     scoutRunning:false,scoutLog:[],scoutResults:[],pollTimer:null,
-    // Step 5
+    // Step 6
     applyList:[],applying:false,
   },
   computed:{
+    stepTitle(){return ['','上传并解析简历','审核个人档案','设置求职偏好','岗位勘探','网申表单填写','批量投递'][this.step]||'工作台'},
+    stepSubtitle(){return [
+      '',
+      '上传可复制文本的 PDF 简历，生成可编辑的个人信息档案。',
+      '核对自动提取结果，补齐网申常用字段后保存。',
+      '维护目标城市、岗位类型、行业和目标公司官网。',
+      '打开目标公司招聘站点，收集可投递岗位入口。',
+      '在 Chrome 中定位到网申表单后，启动智能填写并查看日志。',
+      '汇总待投递岗位，启动批量投递流程。'
+    ][this.step]||''},
     industriesText:{
       get(){return (this.prefs.personal_info.preferred_industries||[]).join(',')},
       set(v){this.prefs.personal_info.preferred_industries=v.split(',').map(s=>s.trim()).filter(Boolean)}
@@ -335,7 +380,7 @@ new Vue({
           await this.analyzeMissing();
           this.step=2
         }
-        else this.extractErr=d.error||'未知错误'
+        else this.extractErr=d.error||'提取失败'
       }catch(e){this.extractErr=e.message}this.extracting=false
     },
     // Step 2
@@ -359,23 +404,60 @@ new Vue({
     // Step 5 (Form Filling)
     onFillFileChange(e){this.fillPdfFile=e.target.files[0]||null},
     async startFill(){
-      this.fillFields=[];this.fillError='';this.filling=true;
+      this.fillFields=[];this.fillError='';this.fillStatus='';this.fillTaskId='';this.visionReview={};this.fillDone=false;this.fillSuccess=false;this.failedCount=0;this.fillTaskLog=[];this.fillExecutionHistory=[];this.fillCurrentTask='';this.fillRunning=true;this.filling=true;
       const fd=new FormData();
       if(this.fillPdfFile)fd.append('resume',this.fillPdfFile);
       try{
-        const controller=new AbortController();
-        const timeoutId=setTimeout(()=>controller.abort(),60000);
-        const r=await fetch('/api/fill/start',{method:'POST',body:fd,signal:controller.signal});
-        clearTimeout(timeoutId);
+        const r=await fetch('/api/fill/start',{method:'POST',body:fd});
         const d=await r.json();
-        if(d.fields)this.fillFields=d.fields;
-        else this.fillError=d.error||'填写失败';
-        if(!this.fillFields.length&&!this.fillError)this.fillError='未识别到表单字段'
-      }catch(e){this.fillError='请求超时或失败: '+(e.message||'')}this.filling=false
+        if(d.task_id){
+          this.fillTaskId=d.task_id;
+          this.fillStatus='任务已启动，正在后台处理...';
+          this.pollFillStatus();
+        }else{
+          this.fillError=d.error||'启动任务失败';
+          this.fillRunning=false;
+        }
+      }catch(e){this.fillError='请求失败: '+(e.message||'');this.fillRunning=false}
+      this.filling=false
+    },
+    async pollFillStatus(){
+      if(!this.fillRunning)return;
+      try{
+        const r=await fetch('/api/fill/status/'+this.fillTaskId);
+        const d=await r.json();
+        this.fillTaskLog=d.log||[];
+        this.fillExecutionHistory=d.execution_history||[];
+        this.fillCurrentTask=d.current_task||'';
+        this.fillFields=d.fields||[];
+        this.visionReview=d.vision_review||{};
+        if(d.running){
+          this.fillPollTimer=setTimeout(()=>this.pollFillStatus(),1500);
+        }else{
+          this.fillRunning=false;
+          this.fillDone=true;
+          this.fillSuccess=!!d.success;
+          this.failedCount=d.failed_count||0;
+          this.fillStatus=this.fillSuccess?'任务完成：视觉验收通过':'任务完成：视觉验收未通过';
+          if(d.errors && d.errors.length){this.fillError=d.errors[0];}
+        }
+      }catch(e){
+        if(this.fillRunning){
+          this.fillPollTimer=setTimeout(()=>this.pollFillStatus(),1500);
+        }
+      }
+    },
+    formatHistory(h){return [h.step||'workflow',h.status||'',h.action_type||'',h.uid?('uid='+h.uid):'',h.label?('label='+h.label):'',h.value_preview?('value='+h.value_preview):'',h.field_count!=null?('fields='+h.field_count):'',h.message||h.reason||h.error||''].filter(Boolean).join(' ')},
+    cancelFill(){
+      if(!this.fillTaskId)return;
+      this.fillRunning=false;
+      if(this.fillPollTimer){clearTimeout(this.fillPollTimer);this.fillPollTimer=null}
+      fetch('/api/fill/cancel/'+this.fillTaskId,{method:'POST'}).catch(()=>{});
     },
     async saveFillResult(){this.fillResult={fields:this.fillFields};alert('填写结果已保存');},
     // Step 4 (Scout)
     async startScout(){
+      if(this.pollTimer){clearTimeout(this.pollTimer);this.pollTimer=null}
       this.scoutRunning=true;this.scoutLog=[];this.scoutResults=[];
       this.pollTimer=setTimeout(()=>this.pollScout(),1000);
       try{await fetch('/api/scout/start',{method:'POST'})}catch(e){this.scoutLog.push('出错: '+e.message)}
@@ -386,14 +468,18 @@ new Vue({
       if(Array.isArray(d.results))this.scoutResults=d.results;
       if(d.running)this.pollTimer=setTimeout(()=>this.pollScout(),1500);
       else{this.scoutRunning=false;if(!this.scoutLog.length)this.scoutLog=['勘探已结束']}
-      }catch(e){this.scoutRunning=false}
+      }catch(e){this.scoutRunning=false;if(this.pollTimer){clearTimeout(this.pollTimer);this.pollTimer=null}}
     },
     addToApply(r){for(const j of(r.matched_jobs||[])){if(!this.applyList.some(a=>a.company===r.company&&a.link===j.link))this.applyList.push({company:r.company,title:j.title,link:j.link})}},
-    // Step 5
+    // Step 6
     removeFromApply(i){this.applyList.splice(i,1)},
     async startApply(){if(!this.applyList.length)return;this.applying=true;try{const urls=this.applyList.map(a=>a.link).filter(Boolean);await fetch('/api/apply/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({urls})});alert('已开始投递，请在弹出的浏览器中完成登录。')}catch(e){alert('启动失败: '+e.message)}this.applying=false}
   },
-  mounted(){this.loadPreferences();this.loadTemplate()}
+  beforeDestroy(){
+    if(this.fillPollTimer){clearTimeout(this.fillPollTimer);this.fillPollTimer=null}
+    if(this.pollTimer){clearTimeout(this.pollTimer);this.pollTimer=null}
+  },
+  mounted(){var el=document.getElementById('bootError');if(el)el.style.display='none';this.loadPreferences();this.loadTemplate()}
 })
 </script>
 </body>

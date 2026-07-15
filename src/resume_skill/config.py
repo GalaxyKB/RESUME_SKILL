@@ -35,6 +35,9 @@ PROJECT_ROOT = _get_project_root()
 
 DEFAULT_DEEPSEEK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro-260425"
+DEFAULT_ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
+DEFAULT_ARK_MODEL = "doubao-seed-2-0-lite-260428"
+DEFAULT_ARK_VISION_MODEL = "doubao-seed-2-1-pro-260628"
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_OPENAI_MODEL = "gpt-4o"
 
@@ -53,6 +56,9 @@ def _env_bool(key: str, default: bool = False) -> bool:
 @dataclass
 class LLMConfig:
     provider: str = "deepseek"
+    ark_api_key: str = ""
+    ark_base_url: str = DEFAULT_ARK_BASE_URL
+    ark_model: str = DEFAULT_ARK_MODEL
     deepseek_api_key: str = ""
     deepseek_base_url: str = DEFAULT_DEEPSEEK_BASE_URL
     deepseek_model: str = DEFAULT_DEEPSEEK_MODEL
@@ -60,6 +66,15 @@ class LLMConfig:
     openai_api_key: str = ""
     openai_base_url: str = DEFAULT_OPENAI_BASE_URL
     openai_model: str = DEFAULT_OPENAI_MODEL
+
+
+@dataclass
+class VisionConfig:
+    provider: str = "ark_responses"
+    api_key: str = ""
+    base_url: str = DEFAULT_ARK_BASE_URL
+    model: str = DEFAULT_ARK_VISION_MODEL
+    enabled: bool = True
 
 
 @dataclass
@@ -105,6 +120,7 @@ class MCPConfig:
 @dataclass
 class AppConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
+    vision: VisionConfig = field(default_factory=VisionConfig)
     mcp: MCPConfig = field(default_factory=MCPConfig)  # 新增
     browser: BrowserConfig = field(default_factory=BrowserConfig)
     form_filling: FormFillingConfig = field(default_factory=FormFillingConfig)
@@ -166,6 +182,9 @@ def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
 
     llm_cfg = LLMConfig(
         provider=_env("LLM_PROVIDER", yaml_data.get("api", {}).get("provider", "deepseek")),
+        ark_api_key=_env("ARK_API_KEY", _env("DEEPSEEK_API_KEY")),
+        ark_base_url=_env("ARK_BASE_URL", yaml_data.get("api", {}).get("ark_base_url", DEFAULT_ARK_BASE_URL)),
+        ark_model=_env("ARK_MODEL", yaml_data.get("api", {}).get("ark_model", DEFAULT_ARK_MODEL)),
         deepseek_api_key=_env("DEEPSEEK_API_KEY"),
         deepseek_base_url=_env("DEEPSEEK_BASE_URL", yaml_data.get("api", {}).get("deepseek_base_url", DEFAULT_DEEPSEEK_BASE_URL)),
         deepseek_model=_env("DEEPSEEK_MODEL", yaml_data.get("api", {}).get("deepseek_model", DEFAULT_DEEPSEEK_MODEL)),
@@ -173,6 +192,15 @@ def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
         openai_api_key=_env("OPENAI_API_KEY"),
         openai_base_url=_env("OPENAI_BASE_URL", DEFAULT_OPENAI_BASE_URL),
         openai_model=_env("OPENAI_MODEL", DEFAULT_OPENAI_MODEL),
+    )
+
+    vision_yaml = yaml_data.get("vision", {})
+    vision_cfg = VisionConfig(
+        provider=_env("VISION_PROVIDER", vision_yaml.get("provider", "ark_responses")),
+        api_key=_env("VISION_API_KEY", llm_cfg.ark_api_key),
+        base_url=_env("VISION_BASE_URL", vision_yaml.get("base_url", llm_cfg.ark_base_url)),
+        model=_env("VISION_MODEL", vision_yaml.get("model", DEFAULT_ARK_VISION_MODEL)),
+        enabled=_env_bool("VISION_ENABLED", vision_yaml.get("enabled", True)),
     )
 
     browser_yaml = yaml_data.get("browser", {})
@@ -218,6 +246,7 @@ def load_app_config(project_dir: Optional[Path] = None) -> AppConfig:
 
     return AppConfig(
         llm=llm_cfg,
+        vision=vision_cfg,
         mcp=mcp_cfg,  # 新增
         browser=browser_cfg,
         form_filling=form_cfg,
