@@ -2,230 +2,156 @@
 
 # RESUME_SKILL
 
-### AI-powered job application copilot for resume analysis, browser automation, and GUI recovery
+### A browser GUI agent for resume parsing and job application form filling
 
 <p>
-  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
-  <img src="https://img.shields.io/badge/LangGraph-Orchestration-1C3C3C?style=for-the-badge" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Flask-Web_UI-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask" />
   <img src="https://img.shields.io/badge/Chrome_DevTools-MCP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome DevTools MCP" />
-  <img src="https://img.shields.io/badge/Vision-GUI_Agent-8A2BE2?style=for-the-badge" alt="Vision GUI Agent" />
-  <img src="https://img.shields.io/badge/License-MIT-00D9FF?style=for-the-badge" alt="MIT License" />
+  <img src="https://img.shields.io/badge/LangGraph-Workflow-1C3C3C?style=for-the-badge" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/Vision-Multimodal_Agent-7B3FE4?style=for-the-badge" alt="Vision" />
 </p>
 
-RESUME_SKILL is evolving from an autofill script into a LangGraph-driven application agent: it analyzes your resume, understands job descriptions, plans the application flow, operates Chrome through Google Chrome DevTools MCP, and uses vision feedback to recover from complex UI failures.
+RESUME_SKILL is a vertical GUI agent prototype for online job applications. It parses a local resume, builds a structured profile, observes real application pages through Chrome DevTools MCP, fills form fields, uploads attachments, handles custom controls, and verifies results with accessibility snapshots plus vision review.
 
 </div>
 
 ---
 
-## What It Does
+## Overview
 
-RESUME_SKILL helps with the repetitive parts of online job applications while keeping the user in control.
+Most application portals are not simple HTML forms. They use custom dropdowns, date pickers, repeated education or work-history sections, asynchronous file upload widgets, modals, validation states, and multi-step flows. A single `fill()` call is often not enough.
+
+RESUME_SKILL approaches the page as an interactive browser task:
 
 ```text
 Resume PDF
-  -> AI resume analysis
-  -> profile review
-  -> JD analysis
-  -> tailored application materials
-  -> browser application planning
-  -> Chrome MCP execution
-  -> vision-based GUI verification and recovery
+  -> local extraction and profile consolidation
+  -> page snapshot and screenshot observation
+  -> section-level form planning
+  -> answer generation from the profile
+  -> Chrome DevTools MCP actions
+  -> confirmation by snapshot and vision review
+  -> retry, repair, or manual handoff
 ```
 
-The project is designed for real application forms, not only simple HTML inputs. The next-generation workflow treats each page as an interactive GUI task: observe the page, plan one safe action, execute it, verify visually, and recover when the UI behaves unexpectedly.
-
-## Why This Matters
-
-Most job application sites are not clean forms. They contain custom dropdowns, async validation, file upload widgets, modal dialogs, multi-step flows, city pickers, date pickers, and login interruptions. A one-shot `fill()` call is not enough.
-
-RESUME_SKILL combines three layers:
-
-| Layer | Role |
-| --- | --- |
-| Text LLM | Understands resume data, JD requirements, field meaning, and safe answers |
-| Chrome DevTools MCP | Provides browser observation and controlled actions such as `click`, `fill_form`, `upload_file`, `take_snapshot`, and `take_screenshot` |
-| Vision GUI Agent | Verifies what actually happened on screen and proposes recovery actions for difficult UI controls |
-
-The goal is not blind automation. The goal is controlled assistance with visible state, logs, recovery, and explicit manual handoff for sensitive or unsafe steps.
+The project is not intended to blindly submit applications. By default, it does not click final submit or apply buttons. Its purpose is to reduce repetitive form entry while keeping the user in control.
 
 ---
 
-## Current Direction
+## Current Capabilities
 
-The core workflow is being migrated to LangGraph.
+| Area | Capability |
+| --- | --- |
+| Resume parsing | Extracts structured profile data from PDF text, with local fallback when LLM extraction fails |
+| Web UI | Flask + Vue 2 CDN workflow for profile review, browser launch, and smart filling |
+| Browser control | Uses Google Chrome DevTools MCP to observe and operate the real browser |
+| Form planning | Groups fields into sections such as basic info, education, work history, projects, attachments, and agreements |
+| Answer generation | Uses the consolidated profile and markdown evidence to answer fields section by section |
+| Dropdown handling | Opens, selects, blurs, waits, and verifies selected values before marking fields confirmed |
+| Resume upload | Attempts attachment upload with diagnostics and confirmation instead of treating tool success as page success |
+| Vision review | Uses a vision model to assist field discovery and post-fill verification, with retry and image compression |
+| Recovery | Performs bounded repair actions such as `fill`, `click`, `type_text`, `press_key`, and `upload_file` |
+| Testing | Includes pytest coverage for workflow nodes, task APIs, web regressions, executor behavior, and form-plan safeguards |
+
+---
+
+## Architecture
 
 ```text
-START
-  -> Resume Analyzer
-  -> Job Description Analyzer
-  -> Resume Customization
-  -> Cover Letter Generator
-  -> Application Planner
-  -> Browser Executor
-  -> Verify Result
-      -> success -> END
-      -> recoverable failure -> GUI Recovery -> Browser Executor
-      -> manual required -> END
+Web UI
+  Flask app + Vue frontend
+      |
+      v
+Profile Layer
+  PDF extraction -> unified profile YAML -> profile_template.md evidence
+      |
+      v
+Planning Layer
+  Snapshot parser + visual hints + section-level FormPlan
+      |
+      v
+Execution Layer
+  Chrome DevTools MCP tools: take_snapshot, take_screenshot, click, fill, type_text, press_key, upload_file
+      |
+      v
+Verification Layer
+  Snapshot confirmation + vision review + bounded recovery actions
 ```
 
-### Unified Agent State
-
-The workflow is centered around a shared state object:
-
-```python
-{
-    "user_profile": {...},
-    "resume_data": {...},
-    "resume_pdf_path": "...",
-    "job_description": {...},
-    "application_form": {...},
-    "generated_documents": {...},
-    "browser_context": {...},
-    "current_task": "...",
-    "next_action": {...},
-    "execution_history": [...],
-    "errors": [...],
-    "gui_recovery_needed": False,
-    "manual_required": False,
-    "success": False,
-}
-```
-
-This gives the agent memory, traceability, and a clear success criterion: a field is not considered done until the browser action has completed and the page state has been verified.
+The repository also contains LangGraph-style workflow modules under `src/resume_skill/workflow/`. The current Web UI Step 5 uses a direct browser filling loop for practical reliability, while the workflow modules provide a structured path for planner/executor/verifier evolution.
 
 ---
 
-## Agent Nodes
+## GUI Agent Scope
 
-The planned LangGraph nodes are intentionally small and auditable.
+RESUME_SKILL can reasonably be described as a vertical browser GUI agent:
 
-| Node | Responsibility |
+- It observes a live browser page through snapshots and screenshots.
+- It plans actions from page state and user profile data.
+- It executes bounded GUI actions through Chrome DevTools MCP.
+- It verifies whether actions actually changed the page.
+- It uses vision as an auxiliary recognizer and reviewer for complex UI states.
+
+It is not a general-purpose Computer Use agent. It is specialized for online application forms and deliberately avoids arbitrary desktop control.
+
+---
+
+## Safety And Privacy
+
+This project handles sensitive data. Treat local profile files, resumes, logs, and API keys carefully.
+
+- Do not commit `.env`.
+- Do not commit real resumes or personal profile files.
+- Do not commit generated logs that contain profile data or API responses.
+- Use `.env.example` only as a public template with placeholder values.
+- Keep `FORM_FILLING_AUTO_SUBMIT` disabled unless you explicitly implement and audit final submission behavior.
+
+The project is designed to avoid final application submission by default. Review all filled information manually before submitting on a real website.
+
+---
+
+## Requirements
+
+| Dependency | Recommended Version |
 | --- | --- |
-| Resume Analyzer | Parse the user's resume and extract profile, education, projects, skills, and work history |
-| Job Description Analyzer | Extract requirements, responsibilities, keywords, and match criteria from a JD |
-| Resume Customization | Tailor resume content toward the target role |
-| Cover Letter Generator | Generate cover letters, self-introductions, and open-question drafts |
-| Application Planner | Decide the next safe browser action from profile, page state, and execution history |
-| Browser Executor | Execute whitelisted browser actions through Chrome DevTools MCP |
-| Verify Result | Use snapshot and screenshot evidence to decide whether the action really worked |
-| GUI Recovery | Use a lightweight vision-guided loop to recover from custom dropdowns, upload widgets, modals, and failed inputs |
+| Python | 3.8+ |
+| Node.js | 18+ |
+| Google Chrome | Recent stable version |
+| Python packages | Installed from `pyproject.toml` |
+| LLM provider | Ark / Doubao / DeepSeek / OpenAI-compatible provider |
+| Vision provider | Ark responses or chat-compatible vision model |
 
----
-
-## Browser Automation Strategy
-
-RESUME_SKILL uses Google Chrome DevTools MCP as the browser execution layer.
-
-Key MCP tools used by the project:
-
-| Tool | Purpose |
-| --- | --- |
-| `take_snapshot` | Read the accessibility tree and obtain stable `uid` references |
-| `take_screenshot` | Capture the actual visual page for vision verification |
-| `fill_form` | Fill multiple stable inputs quickly |
-| `fill` | Fill one text input, textarea, select, checkbox, or radio |
-| `click` | Open dropdowns, buttons, tabs, and custom controls |
-| `upload_file` | Upload the local resume PDF to the official application website |
-| `type_text` / `press_key` | Recover when direct filling does not work |
-| `wait_for` | Wait for async page changes |
-
-Chrome DevTools MCP is the agent's hands and eyes. The models decide what to do; MCP executes only approved actions.
-
----
-
-## Lightweight GUI Agent
-
-The GUI recovery layer is deliberately narrow. It is not a heavyweight Computer Use agent.
-
-It only performs:
-
-1. Page screenshot
-2. Visual understanding
-3. Control or coordinate localization
-4. Mouse and keyboard actions through the browser adapter
-
-Example action schema:
-
-```json
-{
-  "type": "click",
-  "uid": "1_24",
-  "value": "",
-  "reason": "Open the education dropdown before selecting an option"
-}
-```
-
-Allowed recovery actions are restricted to:
-
-```text
-click | type_text | press_key | upload_file | manual
-```
-
-The agent does not execute arbitrary JavaScript and does not click final submit buttons unless explicitly allowed.
+Chrome DevTools MCP is launched through `npx chrome-devtools-mcp@latest`, so Node.js must be available on `PATH`.
 
 ---
 
 ## Installation
 
-### Requirements
-
-| Dependency | Version |
-| --- | --- |
-| Python | 3.10+ recommended |
-| Node.js | 18+ |
-| Google Chrome | Recent stable version |
-| LLM API Key | Volcengine Ark / OpenAI-compatible provider |
-
-The local development environment used by this project is:
-
-```powershell
-conda activate resume-skill-v24
-```
-
-Environment path used during development:
-
-```text
-D:\ProgramData\Anaconda3\envs\resume-skill-v24
-```
-
-### Setup
-
 ```powershell
 git clone git@github.com:GalaxyKB/RESUME_SKILL.git
 cd RESUME_SKILL
 
-conda activate resume-skill-v24
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
 pip install -e .
-
 copy .env.example .env
-# Edit .env and add your own API keys. Never commit .env.
-
-npx chrome-devtools-mcp@latest --help
 ```
 
-### Start Web UI
+Edit `.env` and add your own API keys. Never commit `.env`.
+
+To verify Chrome DevTools MCP is reachable:
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -B -m resume_skill.webui.app --clean
-```
-
-Then open:
-
-```text
-http://127.0.0.1:5000/
+npx chrome-devtools-mcp@latest --help
 ```
 
 ---
 
 ## Configuration
 
-`.env.example` is a public template. It must not contain real keys.
-
-`.env` is your private local configuration and is ignored by Git.
-
-Recommended dual-model setup:
+Minimal `.env` example:
 
 ```env
 LLM_PROVIDER=ark
@@ -234,110 +160,120 @@ ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 ARK_MODEL=doubao-seed-2-0-lite-260428
 
 VISION_ENABLED=true
-VISION_PROVIDER=ark_chat
+VISION_PROVIDER=ark_responses
 VISION_API_KEY=your_ark_api_key_here
 VISION_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-VISION_MODEL=doubao-seed-2-1-turbo-260628
+VISION_MODEL=doubao-seed-2-1-pro-260628
+
+BROWSER_CHANNEL=chrome
+DEBUG_MODE=false
+LOG_LEVEL=INFO
 ```
 
-Recommended model split:
+Public configuration belongs in `.env.example`. Private values belong only in `.env`.
 
-| Capability | Model Role |
+---
+
+## Start The Web UI
+
+```powershell
+python -m resume_skill.webui.app --port 5000
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000/
+```
+
+Typical workflow:
+
+1. Upload a local resume PDF and extract profile data.
+2. Review and complete the generated profile template.
+3. Open Chrome from the Web UI or use an existing browser session.
+4. Navigate to the target application form manually.
+5. Click smart filling and watch logs for confirmed, skipped, or unconfirmed fields.
+6. Review the page manually before any final submission.
+
+---
+
+## Smart Filling Behavior
+
+The current smart filling loop is intentionally conservative:
+
+- It reads the current page snapshot.
+- It captures screenshots for visual hints.
+- It builds a section-level `FormPlan`.
+- It generates answers from profile evidence.
+- It fills fields section by section.
+- It confirms custom dropdowns after selection.
+- It diagnoses attachment upload candidates.
+- It performs vision review and bounded repair actions.
+
+Important log states:
+
+| Log State | Meaning |
 | --- | --- |
-| Text planning | Resume/JD understanding, field semantics, safe answers |
-| Vision verification | Screen-state validation, dropdown recovery, upload confirmation, UI anomaly detection |
+| `页面结构计划` | Form sections were detected and grouped |
+| `select_*_confirm` | A dropdown path was attempted and confirmed |
+| `select unconfirmed` | The page did not confirm the selected value |
+| `上传诊断` | File path, snapshot candidates, and DOM file input diagnostics were collected |
+| `upload_*_confirmed` | Resume attachment upload was confirmed by page state |
+| `upload unconfirmed` | Upload tool action did not produce a visible page confirmation |
+| `视觉复核` | Vision model reviewed the filled page state |
 
 ---
 
-## User Workflow
+## Development
 
-### 1. Upload Resume Locally
+Run the test suite:
 
-Upload a PDF resume in the Web UI. This step extracts local profile data and creates `profile_template.md`.
+```powershell
+pytest -q
+```
 
-This is separate from website attachment upload.
+Run a syntax and bytecode check:
 
-### 2. Review Profile
+```powershell
+python -m compileall src tests
+```
 
-Edit and complete the generated Markdown profile.
+Optional frontend script sanity check:
 
-### 3. Set Job Preferences
-
-Add target companies, roles, cities, and preference information.
-
-### 4. Scout Openings
-
-Open target company career pages and collect candidate jobs.
-
-### 5. Fill Application Page
-
-Navigate Chrome to the target application form. The agent observes the page, plans browser actions, fills stable controls, uploads the resume PDF when required, and uses vision verification to decide whether the page is actually complete.
-
-### 6. Review and Submit Manually
-
-The project is designed to help prepare the application, not blindly submit it. Final submission should remain user-controlled unless explicitly enabled.
+```powershell
+node -e "const fs=require('fs'); const html=fs.readFileSync('src/resume_skill/webui/templates/index.html','utf8'); const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n'); new Function(scripts); console.log('script ok')"
+```
 
 ---
 
-## Privacy and Safety
-
-- `.env` is ignored by Git and must contain real API keys only locally.
-- `.env.example` is safe to publish and must contain placeholders only.
-- Resume files and generated personal profiles are ignored by Git.
-- Sensitive fields such as ID number, political status, passport number, bank details, and verification codes should be marked manual.
-- The agent should not auto-submit final applications without explicit user approval.
-- Execution history is recorded so every browser action can be inspected.
-
----
-
-## Project Layout
+## Repository Layout
 
 ```text
 src/resume_skill/
-├── cli.py                       # CLI entrypoints
-├── config.py                    # Application configuration
-├── extractor/
-│   └── extractor.py             # Resume PDF extraction and profile generation
-├── llm/
-│   ├── base.py                  # Base LLM interface
-│   ├── ark_provider.py          # Volcengine Ark text/vision providers
-│   ├── vision.py                # Vision client factory
-│   └── factory.py               # Text LLM factory
-├── agent/
-│   └── mcp/
-│       ├── chrome_client.py     # Chrome DevTools MCP JSON-RPC client
-│       └── agent.py             # Legacy MCP filling logic
-├── workflow/
-│   ├── state.py                 # LangGraph state model
-│   ├── graph.py                 # StateGraph construction
-│   ├── nodes.py                 # Agent node implementations
-│   ├── runner.py                # Workflow runner
-│   └── store.py                 # In-memory task store
-└── webui/
-    ├── app.py                   # Flask API
-    └── templates/index.html     # Vue2 single-page Web UI
+  agent/          legacy and MCP agent helpers
+  extractor/      resume PDF extraction and profile consolidation
+  llm/            text and vision provider adapters
+  webui/          Flask Web UI and background task manager
+  workflow/       LangGraph-style planner, executor, verifier, and recovery modules
+
+tests/            pytest suite
+docs/             workflow notes and quick-start documentation
+personal_info/    local profile data, should not contain committed private data
+outputs/          generated logs and runtime artifacts, should remain local
 ```
 
 ---
 
-## Roadmap
+## Known Limitations
 
-- LangGraph orchestration for the full application lifecycle
-- Background task execution with status polling
-- Per-action visual verification
-- GUI recovery for dropdowns, modal dialogs, upload widgets, and custom controls
-- JD-aware resume tailoring
-- Cover letter and open-question generation
-- Safer manual handoff for login, CAPTCHA, SMS verification, and sensitive fields
+- Custom application portals vary heavily; some upload widgets and dropdowns require site-specific handling.
+- Vision calls depend on provider latency, image payload size, and model API compatibility.
+- Accessibility snapshots may omit hidden file inputs or dynamically rendered options.
+- The system assists with form completion but does not replace manual review.
+- Final submission remains a user-controlled step by design.
 
 ---
 
 ## License
 
-[MIT License](LICENSE)
-
-<div align="center">
-
-Built for people who are tired of typing the same application form twenty times.
-
-</div>
+This project is released under the MIT License.
